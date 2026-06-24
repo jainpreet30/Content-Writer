@@ -1,0 +1,47 @@
+🏗️ Architectural OverviewThe platform will operate as a decoupled Next.js/React frontend and a Python (FastAPI) or Node.js backend. A step-by-step state tracker keeps record of what the user has modified or generated before the final prompt compiles.[Database Session State]
+   └── Core Keyword & Global Configuration
+   └── Chosen Competitor Data & Outlines
+   └── Token Lists (Entities, N-Grams, LSI, Skip-Grams)
+   └── Rich-Text Editor State & Calculated SEO Score
+🗓️ Phase-by-Phase Implementation PlanPhase 1: Database & Core State SchemaBefore building any UI screens, define how the multi-step wizard stores its data. A document-based database like MongoDB or PostgreSQL with JSONB is ideal for managing dynamic wizard steps.JSON{
+  "projectId": "proj_12345",
+  "mainKeyword": "Best SEO Tools",
+  "userApiKeys": { "deepseek": "sk-...", "openai": "sk-..." },
+  "competitors": [
+    { "url": "https://example.com/page1", "isManual": true, "rawHtml": "..." }
+  ],
+  "outline": [
+    { "id": "1", "type": "H2", "text": "Featured SEO Tools 2025", "wordCountTarget": 200 },
+    { "id": "2", "type": "H3", "text": "Ubersuggest", "wordCountTarget": 200 }
+  ],
+  "styleAnalysis": { "tone": "Formal", "sentenceStyle": "Technical", "vocabulary": "Advanced" },
+  "keywords": {
+    "entities": { "competitor": ["Ubersuggest", "MOZ"], "ai": ["Ahrefs", "Semrush"], "excluded": [] },
+    "nGrams": { "competitor": [], "aiPicked": ["top seo tools"], "unique": [], "excluded": [] },
+    "lsiTerms": { "active": ["affordable SEO tools", "SEO plugins"], "excluded": [] },
+    "skipGrams": { "active": ["best seo", "link building"], "excluded": [] },
+    "alphabetics": []
+  },
+  "editorContent": "<h1>...</h1>",
+  "currentScore": 64
+}
+Phase 2: Core Frontend Wizard LayoutImplement a robust stepper system using a layout engine like Tailwind CSS.Step 1: Research Dashboard (Screenshot 2026-06-24 112216.png)Build a dynamic array input for Competitor URLs with an + Add Competitor trigger button.Build an expandable accordion called Find Competitors via SERP. When clicked, it hits your backend route GET /api/serp?keyword=... utilizing a third-party tool like Serper.dev or ValueSerp.Ensure all links in the SERP accordion use target="_blank" so they open safely in a new tab.Step 2: Interactive Outline Editor (Screenshot 2026-06-24 114223.png)Create an extraction routine (POST /api/extract-outline) that maps a third-party scraping payload (e.g., via ZenRows or Crawlbase) into parsed structured headings.Integrate drag-and-drop mechanics using a lightweight library like @hello-pangea/dnd.Add controls next to each item allowing a user to shift hierarchical states (H2 vs H3) via an dropdown select.Step 3: Heading Budgets (Screenshot 2026-06-24 114557.png)Generate a list mapping all valid layout items from Step 2 directly beside numerical type text-inputs.Bind click event listeners to the global batch utilities (150, 200, 300, 500 words) to programmatically override the target map in a single click.Phase 3: Text Scanners & Token Processing PipelineStep 4: Style Analytics Engine (Screenshot 2026-06-24 114628.png & Screenshot 2026-06-24 114656.png)Add an option for manual text pasting or direct text extraction from competitor links.Design a dedicated formatting prompt to send to the chosen LLM (like DeepSeek) to evaluate the style context:"Analyze the following text block and return a clean JSON payload mapping its structural style elements using exactly four keys: Writing Tone, Sentence Style, Vocabulary Level, and Content Structure."Step 5: Tag Processing Hub (Screenshot 2026-06-24 114717.png to Screenshot 2026-06-24 115002.png)N-Grams & Skip-Grams Calculation: Program your backend to parse the target competitor text mechanically using string splitting or tokenizers.N-Grams Formula: Group words together sequentially in sequences of $n=1, 2, 3$.Skip-Grams Formula: Look for word pairs that frequently exist within a fixed sliding distance window of each other (e.g., words separated by 1 or 2 arbitrary tokens).Interactive State Control: Render the keywords as dynamic pill components. Clicking an individual tag adds its string index to an exclusion collection. Instead of removing the element entirely from view, apply a CSS style modification (like opacity: 0.4; text-decoration: line-through;) so the user can easily see what they have filtered out.Step 6: Alphabetics Search Loop (Screenshot 2026-06-24 115023.png & Screenshot 2026-06-24 115133.png)Build an automatic async loop that appends character maps (a-z and 0-9) to the seed keyword.Query autocomplete engines to dynamically populate the grid elements. Use multi-column grid containers (grid-cols-2 lg:grid-cols-5) to display the variations cleanly.Phase 4: Master Prompt Builder & OrchestrationOnce the user manually completes every step of the wizard, compile everything into a comprehensive system prompt payload to feed your AI generation model.MarkdownYou are an expert SEO Content Writer. Generate a highly optimized article matching this configuration:
+
+PRIMARY KEYWORD: [Main Keyword]
+TONE & STYLE: [Writing Tone], [Sentence Style], [Vocabulary Level]
+
+ARTICLE OUTLINE & WORD BUDGETS:
+[For each item in the Outline array]
+- Heading: [Text] ([Type]) -> Target word count: [wordCountTarget] words.
+
+REQUIRED ENTITIES TO INCLUDE:
+[Filtered list of active Competitor & AI Entities]
+
+REQUIRED N-GRAMS & LSI PHRASES:
+[Filtered list of active N-Grams and LSI terms]
+
+DO NOT USE ANY OF THESE EXCLUDED TERMS:
+[Array of terms excluded by the user across steps 4-6]
+
+Generate the full article following this structure explicitly.
+Phase 5: Live Editor Workspace & Optimization Engine (Screenshot 2026-06-24 115608.png)The UI Interface Layout:Split the main screen area using flexible flex containers. Assign a wider track ($70\%$) on the left for your workspace canvas (using a rich text suite like TipTap or Slate.js).Assign the remaining track ($30\%$) on the right for your interactive optimization panel.The Live SEO Calculation Script:To keep the text entry highly responsive, don't run expensive string calculations on every single key press. Instead, use a debounced function hook that triggers 1.5 to 2 seconds after the user stops typing.When triggered, parse the raw HTML structure coming directly from your text editor space. Use regular expressions (Regex) or native string scanning methods to count how many times target keyword phrases appear in the text.Calculating the Total Optimization Score:Maintain an operational formula that dynamically tallies a score out of 100 points based on your core content goals:$$\text{Total SEO Score} = \text{Score}_{\text{Keywords}} (40\%) + \text{Score}_{\text{WordCount}} (30\%) + \text{Score}_{\text{Headings}} (20\%) + \text{Score}_{\text{Media}} (10\%)$$Dynamic Visual Tracking:Map your active keyword array directly over your interface tag lists. If a user matches the exact target density for a phrase, update that keyword pill's color to green. If they are under the target, leave it neutral; if they overshoot the target (keyword stuffing), change its styling to an alert color like orange or red.
