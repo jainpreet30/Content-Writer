@@ -7,44 +7,136 @@ interface HeadingItem {
   wordCountTarget: number;
 }
 
+// Detect if a keyword is informational ("what is X", "how to X", "guide") or commercial ("best X", "top X reviews")
+function isInformationalKeyword(kw: string): boolean {
+  const kwLower = kw.toLowerCase();
+  return (
+    /^(what (is|are|does|do)|how (to|does|do|can)|why (is|are)|when (is|are))/.test(kwLower) ||
+    /\b(explained?|definition|meaning|overview|guide|tutorial|understand|learn|introduction|intro)\b/.test(kwLower) ||
+    /\b(vs|versus|difference between)\b/.test(kwLower) ||
+    /\b(types? of|kinds? of|list of|examples? of)\b/.test(kwLower)
+  );
+}
+
+// Strip intent prefix to get the core subject ("What is Deep Learning" → "Deep Learning")
+function extractCoreTopic(kw: string): string {
+  return kw
+    .replace(/^(what (is|are)|how (to|does|do|can)|why (is|are)|introduction to|intro to|guide to|tutorial on)\s+/i, '')
+    .replace(/\s+(explained?|definition|meaning|overview|guide|tutorial)$/i, '')
+    .trim();
+}
+
 function getKeywordRelevantEntities(kw: string): string[] {
   const kwLower = kw.toLowerCase();
-  if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('photo') || kwLower.includes('audio') || kwLower.includes('graphic') || kwLower.includes('render') || kwLower.includes('media') || kwLower.includes('creative') || kwLower.includes('software') || kwLower.includes('pc')) {
-    if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('iphone') || kwLower.includes('ipad') || kwLower.includes('app ') || kwLower.endsWith('app') || kwLower.includes('apps')) {
+  const coreTopic = extractCoreTopic(kw).toLowerCase();
+  const subject = coreTopic || kwLower;
+
+  // ── Informational / Educational topics ──────────────────────────────────
+
+  // AI / ML / Neural Networks / NLP / Deep Learning
+  if (subject.includes('neural') || subject.includes('rnn') || subject.includes('lstm') || subject.includes('gru') || subject.includes('deep learning') || subject.includes('machine learning') || subject.includes('nlp') || subject.includes('natural language') || subject.includes('transformer') || subject.includes('language model') || subject.includes('computer vision') || subject.includes('reinforcement')) {
+    return ['TensorFlow', 'PyTorch', 'Keras', 'scikit-learn', 'Hugging Face', 'Google Brain', 'DeepMind', 'NVIDIA CUDA', 'Python', 'NumPy', 'Jupyter Notebook', 'Stanford NLP'];
+  }
+  // Quantum Computing / Physics / Science
+  if (subject.includes('quantum') || subject.includes('physics') || subject.includes('chemistry') || subject.includes('biology') || subject.includes('dna') || subject.includes('protein') || subject.includes('molecule')) {
+    return ['IBM Quantum', 'Google Quantum AI', 'CERN', 'MIT', 'Stanford', 'Nature', 'PubMed', 'arXiv'];
+  }
+  // Data Science / Statistics / Analytics
+  if (subject.includes('data science') || subject.includes('algorithm') || subject.includes('statistic') || subject.includes('regression') || subject.includes('classification') || subject.includes('clustering') || subject.includes('analytics')) {
+    return ['Python', 'R', 'NumPy', 'pandas', 'scikit-learn', 'Matplotlib', 'Tableau', 'Power BI', 'Jupyter', 'SciPy'];
+  }
+  // Programming / Web Dev
+  if (subject.includes('programming') || subject.includes('python') || subject.includes('javascript') || subject.includes('java') || subject.includes('react') || subject.includes('node') || subject.includes('api') || subject.includes('database') || subject.includes('sql') || subject.includes('git')) {
+    return ['GitHub', 'Stack Overflow', 'Visual Studio Code', 'Docker', 'Kubernetes', 'MDN Web Docs', 'npm', 'PostgreSQL', 'MongoDB', 'REST API'];
+  }
+  // Blockchain / Crypto / Web3
+  if (subject.includes('blockchain') || subject.includes('smart contract') || subject.includes('ethereum') || subject.includes('solidity') || subject.includes('defi') || subject.includes('nft') || subject.includes('web3')) {
+    return ['Ethereum', 'Solidity', 'MetaMask', 'OpenZeppelin', 'Hardhat', 'Chainlink', 'IPFS', 'Polygon', 'Binance Smart Chain'];
+  }
+
+  // ── Commercial / Product topics ─────────────────────────────────────────
+
+  // Video / Design / Creative
+  if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('photo') || kwLower.includes('audio') || kwLower.includes('graphic') || kwLower.includes('render') || kwLower.includes('media') || kwLower.includes('creative')) {
+    if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('app')) {
       return ['CapCut Mobile', 'LumaFusion', 'KineMaster', 'InShot App', 'VN Video Editor', 'Adobe Premiere Rush', 'Splice App', 'Alight Motion', 'FilmoraGo', 'iMovie Mobile'];
     }
     return ['Adobe Premiere Pro', 'DaVinci Resolve', 'Final Cut Pro', 'CapCut PC', 'Filmora', 'CyberLink PowerDirector', 'Avid Media Composer'];
   }
-  if (kwLower.includes('health') || kwLower.includes('medical') || kwLower.includes('fit') || kwLower.includes('diet') || kwLower.includes('nutrition')) {
+  // Health / Medical
+  if (kwLower.includes('health') || kwLower.includes('fit') || kwLower.includes('diet') || kwLower.includes('medical') || kwLower.includes('doctor') || kwLower.includes('nutrition') || kwLower.includes('wellness') || kwLower.includes('gym')) {
     return ['Mayo Clinic', 'WebMD', 'Healthline', 'CDC', 'WHO', 'NHS', 'FDA'];
   }
-  if (kwLower.includes('finance') || kwLower.includes('money') || kwLower.includes('crypto') || kwLower.includes('bitcoin') || kwLower.includes('invest')) {
+  // Finance / Crypto
+  if (kwLower.includes('finance') || kwLower.includes('money') || kwLower.includes('crypto') || kwLower.includes('bitcoin') || kwLower.includes('stock') || kwLower.includes('invest') || kwLower.includes('pricing') || kwLower.includes('cost') || kwLower.includes('wealth')) {
     return ['Bloomberg', 'Investopedia', 'Forbes', 'Yahoo Finance', 'Coinbase', 'Binance', 'NerdWallet'];
   }
-  if (kwLower.includes('travel') || kwLower.includes('hotel') || kwLower.includes('flight') || kwLower.includes('trip')) {
+  // Travel
+  if (kwLower.includes('travel') || kwLower.includes('hotel') || kwLower.includes('flight') || kwLower.includes('trip') || kwLower.includes('tour') || kwLower.includes('beach') || kwLower.includes('vacation')) {
     return ['Tripadvisor', 'Booking.com', 'Expedia', 'Airbnb', 'Skyscanner', 'Yelp'];
   }
+  // SEO / Marketing
   if (kwLower.includes('seo') || kwLower.includes('marketing') || kwLower.includes('content') || kwLower.includes('keyword')) {
     return ['Ahrefs', 'Semrush', 'Moz', 'Ubersuggest', 'Google Search Console', 'Google Analytics'];
   }
-  return ['Google', 'Microsoft', 'Apple', 'Adobe', 'Amazon', 'ChatGPT', 'OpenAI'];
+  // Software / Tech tools
+  if (kwLower.includes('software') || kwLower.includes('test') || kwLower.includes('qa') || kwLower.includes('develop') || kwLower.includes('company') || kwLower.includes('agency') || kwLower.includes('web') || kwLower.includes('server')) {
+    return ['GitHub', 'Jira', 'Slack', 'Docker', 'AWS', 'Vercel', 'Postman', 'Jenkins', 'Kubernetes'];
+  }
+
+  // Absolute last-resort default — return empty rather than inject wrong brands
+  return [];
 }
 
 function getKeywordRelevantNGrams(kw: string): string[] {
   const kwLower = kw.toLowerCase();
-  if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('creative') || kwLower.includes('pc')) {
-    if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('iphone') || kwLower.includes('ipad') || kwLower.includes('app ') || kwLower.endsWith('app') || kwLower.includes('apps')) {
+  const isInformational = isInformationalKeyword(kw);
+  const coreTopic = extractCoreTopic(kw);
+  const subject = coreTopic || kw;
+
+  if (isInformational) {
+    const subjectLower = subject.toLowerCase();
+    // Neural Networks / AI / ML
+    if (subjectLower.includes('neural') || subjectLower.includes('rnn') || subjectLower.includes('lstm') || subjectLower.includes('deep learning') || subjectLower.includes('machine learning') || subjectLower.includes('nlp') || subjectLower.includes('transformer') || subjectLower.includes('language model')) {
+      return [`${subject} architecture`, `how ${subject} works`, `${subject} vs transformer`, `${subject} applications`, `${subject} training process`, `${subject} python example`, 'backpropagation through time', 'vanishing gradient problem', 'sequence modeling', 'hidden state memory'];
+    }
+    // Data Science / Algorithms
+    if (subjectLower.includes('algorithm') || subjectLower.includes('data science') || subjectLower.includes('regression') || subjectLower.includes('classification')) {
+      return [`${subject} explained`, `${subject} example`, `${subject} in Python`, `${subject} formula`, `${subject} types`, `${subject} applications`, 'model accuracy improvement', 'feature selection methods'];
+    }
+    // Programming / Coding
+    if (subjectLower.includes('programming') || subjectLower.includes('code') || subjectLower.includes('python') || subjectLower.includes('javascript') || subjectLower.includes('api')) {
+      return [`${subject} tutorial`, `${subject} example`, `${subject} best practices`, `${subject} for beginners`, `${subject} advanced techniques`, 'clean code principles', 'debugging strategies'];
+    }
+    // Generic informational — safe semantic variations (no brand names, no commercial phrases)
+    return [
+      `${subject} explained`,
+      `how ${subject} works`,
+      `${subject} definition`,
+      `${subject} examples`,
+      `types of ${subject}`,
+      `${subject} applications`,
+      `${subject} benefits and limitations`,
+      `${subject} for beginners`,
+      `understanding ${subject}`,
+      `${subject} overview`
+    ];
+  }
+
+  // Commercial intent — only use commercial n-gram patterns for commercial keywords
+  if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('creative') || kwLower.includes('pc') || kwLower.includes('software')) {
+    if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('app')) {
       return ['mobile video editing', 'best mobile video editor', 'edit videos on phone', 'video editing app', 'smartphone video editor', 'mobile production app'];
     }
     return ['video editing software', 'best video editor', 'PC video editing', 'video production tools', 'edit videos on PC', 'professional video editing'];
   }
   return [
     `best ${kw}`,
-    `top ${kw} in 2026`,
-    `${kw} reviews`,
+    `top ${kw} tools`,
     `${kw} comparison`,
-    `how to use ${kw}`,
-    `professional ${kw}`
+    `${kw} review 2026`,
+    `${kw} guide`,
+    `affordable ${kw}`
   ];
 }
 
@@ -120,11 +212,60 @@ function getCategoryRelevantImages(kw: string): CuratedImage[] {
     ];
   }
 
-  // Default: General SEO, Business, Marketing, Content
+  // Category 6: AI, Machine Learning, NLP, LLM, Deep Learning, Neural, GPT, Automation
+  if (kwLower.includes('ai') || kwLower.includes('artificial intelligence') || kwLower.includes('machine learning') || kwLower.includes('deep learning') || kwLower.includes('neural') || kwLower.includes('nlp') || kwLower.includes('llm') || kwLower.includes('gpt') || kwLower.includes('chatgpt') || kwLower.includes('automation') || kwLower.includes('robot') || kwLower.includes('computer vision') || kwLower.includes('generative') || kwLower.includes('language model')) {
+    return [
+      { imageUrl: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?auto=format&fit=crop&w=800&q=80', title: 'AI artificial intelligence neural network visualization' },
+      { imageUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=800&q=80', title: 'Machine learning data processing concept' },
+      { imageUrl: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80', title: 'Deep learning algorithm abstract visualization' },
+      { imageUrl: 'https://images.unsplash.com/photo-1655720828018-edd2daec9349?auto=format&fit=crop&w=800&q=80', title: 'AI chatbot and large language model interface' },
+      { imageUrl: 'https://images.unsplash.com/photo-1507146153580-69a1fe6d8aa1?auto=format&fit=crop&w=800&q=80', title: 'Robot automation and artificial intelligence' }
+    ];
+  }
+
+  // Category 7: Ecommerce, Shopping, Product, Store, Amazon, Shopify, Retail
+  if (kwLower.includes('ecommerce') || kwLower.includes('e-commerce') || kwLower.includes('shop') || kwLower.includes('product') || kwLower.includes('store') || kwLower.includes('amazon') || kwLower.includes('shopify') || kwLower.includes('retail') || kwLower.includes('sell') || kwLower.includes('buy')) {
+    return [
+      { imageUrl: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=800&q=80', title: 'Online shopping cart and ecommerce store' },
+      { imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=800&q=80', title: 'Retail shopping bags and products' },
+      { imageUrl: 'https://images.unsplash.com/photo-1530018607912-eff2daa1bac4?auto=format&fit=crop&w=800&q=80', title: 'Product packaging and delivery boxes' },
+      { imageUrl: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=800&q=80', title: 'Mobile payment and digital checkout' }
+    ];
+  }
+
+  // Category 8: Education, Learning, Course, Training, School, University, Study
+  if (kwLower.includes('education') || kwLower.includes('learn') || kwLower.includes('course') || kwLower.includes('train') || kwLower.includes('school') || kwLower.includes('university') || kwLower.includes('study') || kwLower.includes('student') || kwLower.includes('teach') || kwLower.includes('tutorial')) {
+    return [
+      { imageUrl: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=800&q=80', title: 'Student studying and learning from books' },
+      { imageUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80', title: 'University campus and graduation education' },
+      { imageUrl: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80', title: 'Online education e-learning laptop course' },
+      { imageUrl: 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&w=800&q=80', title: 'Classroom chalkboard teaching concept' }
+    ];
+  }
+
+  // Category 9: Legal, Law, Lawyer, Contract, Court, Compliance, Attorney
+  if (kwLower.includes('legal') || kwLower.includes('law') || kwLower.includes('lawyer') || kwLower.includes('contract') || kwLower.includes('court') || kwLower.includes('compliance') || kwLower.includes('attorney') || kwLower.includes('regulation') || kwLower.includes('policy')) {
+    return [
+      { imageUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80', title: 'Legal scales of justice and law books' },
+      { imageUrl: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=800&q=80', title: 'Business contract signing legal document' },
+      { imageUrl: 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80', title: 'Law library books and legal research' }
+    ];
+  }
+
+  // Category 10: Real Estate, Property, Home, House, Mortgage, Apartment, Rent
+  if (kwLower.includes('real estate') || kwLower.includes('property') || kwLower.includes('house') || kwLower.includes('home') || kwLower.includes('mortgage') || kwLower.includes('apartment') || kwLower.includes('rent') || kwLower.includes('building') || kwLower.includes('construction')) {
+    return [
+      { imageUrl: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80', title: 'Real estate house property for sale' },
+      { imageUrl: 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80', title: 'Modern apartment interior living room' },
+      { imageUrl: 'https://images.unsplash.com/photo-1486325212027-8081e485255e?auto=format&fit=crop&w=800&q=80', title: 'Architecture building exterior modern design' }
+    ];
+  }
+
+  // Default: General Business, Marketing, Content — only used when truly no match
   return [
-    { imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80', title: 'SEO marketing strategy data charts' },
-    { imageUrl: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=800&q=80', title: 'Creative copywriting pen writing on book' },
-    { imageUrl: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=800&q=80', title: 'Social media management statistics charts' },
+    { imageUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=80', title: 'Business team professional meeting collaboration' },
+    { imageUrl: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=80', title: 'Corporate office desk working professional' },
+    { imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80', title: 'Modern office workspace with natural light' },
     { imageUrl: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=800&q=80', title: 'Collaborative business team brainstorming ideas' },
     { imageUrl: 'https://images.unsplash.com/photo-1557200134-90327ee9fafa?auto=format&fit=crop&w=800&q=80', title: 'Email marketing campaign newsletter dispatch' }
   ];
@@ -592,10 +733,56 @@ function getKeywordAwareLayout(
     `;
   }
 
-  // Default General Layout
-  const p1 = matchedSentences[0] || `When it comes to <strong>${headingText}</strong>, the most effective approach depends on your specific goals within <strong>${finalKeyword}</strong>. Teams that use <strong>${ent1}</strong> often see faster results because they can identify what works before committing resources.`;
-  const p2 = matchedSentences[1] || `One thing worth paying attention to is <strong>${ng1}</strong>. Getting this right can make a noticeable difference in outcomes. <strong>${ent2}</strong> provides useful benchmarks for tracking progress and spotting issues early.`;
-  const p3 = matchedSentences[2] || `A practical tip: start small, measure your <strong>${ng2}</strong> results carefully, and then scale what works. This iterative approach consistently outperforms trying to do everything at once.`;
+  // Default General Layout — intent-aware templates, no clichés
+  const isInfoTopic = isInformationalKeyword(finalKeyword);
+  const coreTopic = extractCoreTopic(finalKeyword);
+  const topicLabel = coreTopic || finalKeyword;
+
+  // Use competitor-matched sentences first; only fall back to templates if nothing matched
+  const p1raw = matchedSentences[0];
+  const p2raw = matchedSentences[1];
+  const p3raw = matchedSentences[2];
+
+  let p1: string, p2: string, p3: string;
+
+  if (isInfoTopic) {
+    // Educational / Explanatory templates — specific facts, not vague statements
+    const templates = [
+      [
+        `<strong>${headingText}</strong> is a foundational concept in <strong>${topicLabel}</strong>. Understanding it requires looking at the underlying mechanism: ${p1raw || `how the system processes information step by step, from input to output.`}`,
+        p2raw || `The key distinction from simpler approaches is that <strong>${headingText}</strong> maintains a form of memory between inputs — each new piece of data is processed in the context of what came before. This is what makes it particularly effective for sequential data like text, time series, and audio.`,
+        p3raw || `In practice, this means that when you feed the model a sentence word by word, each word's representation is influenced by all the previous words — not processed in isolation.`
+      ],
+      [
+        `<strong>${headingText}</strong> can be understood as the answer to a specific limitation in earlier architectures: ${p1raw || `the inability to handle variable-length sequences and long-range dependencies.`}`,
+        p2raw || `The mathematical mechanism behind this is relatively straightforward: at each time step <em>t</em>, the model computes a hidden state <strong>h<sub>t</sub></strong> as a function of both the current input <strong>x<sub>t</sub></strong> and the previous hidden state <strong>h<sub>t-1</sub></strong>. This recurrence is where the name originates.`,
+        p3raw || `For practical implementation, frameworks like <strong>${ent1}</strong> provide built-in layer abstractions that handle this computation automatically, making it straightforward to experiment with different configurations.`
+      ],
+      [
+        `To understand <strong>${headingText}</strong> clearly, consider a concrete example: ${p1raw || `predicting the next word in a sentence.`}`,
+        p2raw || `If the sentence so far is "The quick brown fox", a model needs to know all four preceding words to make a good prediction — not just the last one. <strong>${topicLabel}</strong> is designed specifically to solve this problem by threading context across every step of processing.`,
+        p3raw || `This is why <strong>${topicLabel}</strong> became the dominant architecture for tasks like machine translation, speech recognition, and text generation before attention-based models like Transformers became mainstream.`
+      ]
+    ];
+    const tIdx = hash % templates.length;
+    [p1, p2, p3] = templates[tIdx];
+  } else {
+    // Commercial / Descriptive templates
+    const templates = [
+      [
+        p1raw || `<strong>${headingText}</strong> is one of the most critical factors when choosing the right solution for <strong>${finalKeyword}</strong>. The difference between strong and weak performers in this area typically comes down to a few specific technical capabilities.`,
+        p2raw || `<strong>${ent1}</strong> addresses this by providing <strong>${ng1}</strong> features built into its core workflow — no third-party plugins required. This reduces configuration overhead significantly.`,
+        p3raw || `Teams evaluating options should benchmark <strong>${ng2}</strong> performance under realistic workloads, not just advertised specs. The gap between lab results and production behaviour is often larger than vendors admit.`
+      ],
+      [
+        p1raw || `Most implementations of <strong>${headingText}</strong> follow a similar pattern, but the details that separate good from great are worth examining closely.`,
+        p2raw || `<strong>${ent1}</strong> and <strong>${ent2}</strong> both offer strong defaults, but their approaches to <strong>${ng1}</strong> differ in ways that affect scalability at higher loads.`,
+        p3raw || `The practical recommendation: test with a realistic sample of your own data before committing. Synthetic benchmarks rarely reflect the edge cases that matter most in production.`
+      ]
+    ];
+    const tIdx = hash % templates.length;
+    [p1, p2, p3] = templates[tIdx];
+  }
 
   return `
     <p>${p1}</p>
@@ -754,7 +941,25 @@ export async function POST(req: NextRequest) {
 
     // --- Mode: Outline Generation ---
     if (mode === 'outline') {
-      const outlinePrompt = `You are an expert SEO Content Planner. I need a comprehensive, logical article outline for the primary keyword: "${keyword}".
+      const isInfoKwOutline = isInformationalKeyword(keyword);
+      const coreSubject = extractCoreTopic(keyword);
+
+      const outlinePrompt = isInfoKwOutline
+        ? `You are an expert content strategist creating an educational article outline for the query: "${keyword}".
+
+The reader wants to UNDERSTAND this topic deeply — not find a product or service. The outline must follow an educational structure:
+1. Start with a clear definition ("What is ${coreSubject || keyword}?")
+2. Explain the mechanism ("How it works", "Core Architecture")
+3. Cover types/variants if applicable
+4. Include practical examples, real-world applications
+5. Cover advantages and limitations honestly
+6. End with FAQs and a Conclusion
+
+For technical topics (AI, ML, algorithms, programming), include subtopics like "Training Process", "Mathematical Foundation", "Code Example", "Common Pitfalls".
+For comparison topics ("X vs Y"), include head-to-head sections.
+
+Return ONLY a valid JSON array of objects with exactly two keys: "type" (must be "H2", "H3", or "H4") and "text" (the heading). Generate 8-12 headings. No markdown, no backticks, no commentary.`
+        : `You are an expert SEO Content Planner. I need a comprehensive, logical article outline for the primary keyword: "${keyword}".
 Generate between 5 to 10 headings. If the keyword implies a list, comparison, or ranking (like "best", "top", "reviews"), you MUST include specific, popular items (e.g., specific software names, tools, or products) as H3 subheadings.
 Return ONLY a valid JSON array of objects with exactly two keys: "type" (must be "H2", "H3", or "H4") and "text" (the heading title). Do not include markdown code block formatting or backticks.`;
 
@@ -831,10 +1036,111 @@ Return ONLY a valid JSON array of objects with exactly two keys: "type" (must be
         }
       }
 
-      // D. Smart Offline Outline Fallback based on keyword
+      // D. Smart Offline Outline Fallback based on keyword intent
       const kwLower = keyword.toLowerCase();
+      const kwCoreTopic = extractCoreTopic(keyword);
       let fallbackOutline = [];
-      if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('photo') || kwLower.includes('audio') || kwLower.includes('graphic') || kwLower.includes('creative') || kwLower.includes('pc') || kwLower.includes('software')) {
+
+      // ── Informational / Educational outlines ────────────────────────────────
+      if (isInformationalKeyword(keyword)) {
+        const subject = kwCoreTopic || keyword;
+        const subjectLower = subject.toLowerCase();
+
+        // AI / ML / Neural Networks / NLP / Deep Learning
+        if (subjectLower.includes('neural') || subjectLower.includes('rnn') || subjectLower.includes('lstm') || subjectLower.includes('deep learning') || subjectLower.includes('machine learning') || subjectLower.includes('nlp') || subjectLower.includes('gpt') || subjectLower.includes('transformer') || subjectLower.includes('language model') || subjectLower.includes('reinforcement') || subjectLower.includes('computer vision') || subjectLower.includes('generative')) {
+          fallbackOutline = [
+            { type: 'H2', text: `What is ${subject}?` },
+            { type: 'H2', text: `Why ${subject} Matters` },
+            { type: 'H2', text: `How ${subject} Works` },
+            { type: 'H3', text: 'Core Architecture and Components' },
+            { type: 'H3', text: 'Training Process Explained' },
+            { type: 'H2', text: `Types of ${subject}` },
+            { type: 'H2', text: `${subject} vs Other Approaches` },
+            { type: 'H2', text: `Real-World Applications of ${subject}` },
+            { type: 'H2', text: 'Advantages and Limitations' },
+            { type: 'H2', text: `${subject} Implementation Example` },
+            { type: 'H2', text: 'Frequently Asked Questions' },
+            { type: 'H2', text: 'Conclusion' }
+          ];
+        }
+        // Data Science / Algorithms / Statistics
+        else if (subjectLower.includes('algorithm') || subjectLower.includes('data science') || subjectLower.includes('statistic') || subjectLower.includes('regression') || subjectLower.includes('classification') || subjectLower.includes('clustering') || subjectLower.includes('analytics')) {
+          fallbackOutline = [
+            { type: 'H2', text: `What is ${subject}?` },
+            { type: 'H2', text: `Key Concepts and Terminology` },
+            { type: 'H2', text: `How ${subject} Works Step by Step` },
+            { type: 'H2', text: `Types and Variants of ${subject}` },
+            { type: 'H2', text: `${subject} Applications and Use Cases` },
+            { type: 'H2', text: `${subject} in Python: Practical Example` },
+            { type: 'H2', text: 'Advantages and Disadvantages' },
+            { type: 'H2', text: 'Frequently Asked Questions' },
+            { type: 'H2', text: 'Conclusion' }
+          ];
+        }
+        // Programming / Coding / Development
+        else if (subjectLower.includes('programming') || subjectLower.includes('coding') || subjectLower.includes('python') || subjectLower.includes('javascript') || subjectLower.includes('java') || subjectLower.includes('api') || subjectLower.includes('framework') || subjectLower.includes('database') || subjectLower.includes('sql')) {
+          fallbackOutline = [
+            { type: 'H2', text: `What is ${subject}?` },
+            { type: 'H2', text: 'Core Concepts and Syntax' },
+            { type: 'H2', text: `Getting Started with ${subject}` },
+            { type: 'H3', text: 'Installation and Setup' },
+            { type: 'H3', text: 'Basic Usage and Examples' },
+            { type: 'H2', text: 'Advanced Features and Patterns' },
+            { type: 'H2', text: 'Best Practices and Common Mistakes' },
+            { type: 'H2', text: `${subject} vs Alternatives` },
+            { type: 'H2', text: 'Real-World Use Cases' },
+            { type: 'H2', text: 'Frequently Asked Questions' },
+            { type: 'H2', text: 'Conclusion' }
+          ];
+        }
+        // Science / Biology / Physics / Chemistry
+        else if (subjectLower.includes('biology') || subjectLower.includes('physics') || subjectLower.includes('chemistry') || subjectLower.includes('quantum') || subjectLower.includes('cell') || subjectLower.includes('dna') || subjectLower.includes('gene') || subjectLower.includes('evolution')) {
+          fallbackOutline = [
+            { type: 'H2', text: `What is ${subject}?` },
+            { type: 'H2', text: `History and Discovery of ${subject}` },
+            { type: 'H2', text: `How ${subject} Works` },
+            { type: 'H2', text: `Types and Classifications` },
+            { type: 'H2', text: `${subject} in Nature and Real Life` },
+            { type: 'H2', text: 'Scientific Research and Studies' },
+            { type: 'H2', text: 'Practical Applications' },
+            { type: 'H2', text: 'Frequently Asked Questions' },
+            { type: 'H2', text: 'Conclusion' }
+          ];
+        }
+        // Comparisons / Difference Between
+        else if (subjectLower.includes('vs') || subjectLower.includes('versus') || subjectLower.includes('difference between') || subjectLower.includes('compared to')) {
+          const parts = subject.split(/\s+vs\.?\s+|\s+versus\s+|difference between\s+/i);
+          const a = parts[0]?.trim() || 'Option A';
+          const b = parts[1]?.trim() || 'Option B';
+          fallbackOutline = [
+            { type: 'H2', text: `Overview: ${a} vs ${b}` },
+            { type: 'H2', text: `What is ${a}?` },
+            { type: 'H2', text: `What is ${b}?` },
+            { type: 'H2', text: 'Key Differences at a Glance' },
+            { type: 'H2', text: 'Performance Comparison' },
+            { type: 'H2', text: 'Use Cases: When to Use Each' },
+            { type: 'H2', text: 'Pros and Cons' },
+            { type: 'H2', text: 'Verdict: Which Should You Choose?' },
+            { type: 'H2', text: 'Frequently Asked Questions' }
+          ];
+        }
+        // Generic informational fallback
+        else {
+          fallbackOutline = [
+            { type: 'H2', text: `What is ${subject}?` },
+            { type: 'H2', text: `Why ${subject} Is Important` },
+            { type: 'H2', text: `How ${subject} Works` },
+            { type: 'H2', text: `Types of ${subject}` },
+            { type: 'H2', text: `Key Benefits of ${subject}` },
+            { type: 'H2', text: `Common Challenges and How to Overcome Them` },
+            { type: 'H2', text: `Real-World Examples and Applications` },
+            { type: 'H2', text: 'Frequently Asked Questions' },
+            { type: 'H2', text: 'Conclusion' }
+          ];
+        }
+      }
+      // ── Commercial / Product outlines ────────────────────────────────────────
+      else if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('photo') || kwLower.includes('audio') || kwLower.includes('graphic') || kwLower.includes('creative') || kwLower.includes('pc') || kwLower.includes('software')) {
         if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('iphone') || kwLower.includes('ipad') || kwLower.includes('app ') || kwLower.endsWith('app') || kwLower.includes('apps')) {
           fallbackOutline = [
             { type: 'H2', text: 'Introduction to Mobile Video Editing in 2026' },
@@ -946,24 +1252,15 @@ Return ONLY a valid JSON array of objects with exactly two keys: "type" (must be
       }
     }
 
-    if (imageUrls.length < 3) {
+    // Only fall back to curated images if ALL external sources returned nothing.
+    // This prevents generic unrelated images from being injected alongside real fetched ones.
+    if (imageUrls.length === 0) {
       const curated = getCategoryRelevantImages(targetKw);
-      const curatedUrls = curated.map(img => img.imageUrl);
-      imageUrls = [...new Set([...imageUrls, ...curatedUrls])];
+      imageUrls = curated.map(img => img.imageUrl);
     }
 
-    // Deduplicate image URLs to avoid passing the same URL multiple times to the LLM
-    const uniqueImageUrls = [...new Set(imageUrls)].slice(0, 3);
-    
-    if (uniqueImageUrls.length < 3) {
-      const curated = getCategoryRelevantImages(targetKw);
-      for (const img of curated) {
-        if (!uniqueImageUrls.includes(img.imageUrl)) {
-          uniqueImageUrls.push(img.imageUrl);
-        }
-        if (uniqueImageUrls.length >= 3) break;
-      }
-    }
+    // Deduplicate and cap at 2 — the AI will place one near top, one mid-article.
+    const uniqueImageUrls = [...new Set(imageUrls)].slice(0, 2);
 
     let activePrompt = prompt;
     if (mode === 'optimize') {
@@ -997,15 +1294,43 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
 - Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags). No markdown fences, no backticks, no conversational text before or after.
 </RULES>`;
     } else if (mode === 'write') {
-      // Build a structured write prompt that produces high-quality content
-      // Ensure we have at least 2 distinct image URLs for top and mid placement
       const img1 = uniqueImageUrls[0] || '';
       const img2 = uniqueImageUrls[1] || uniqueImageUrls[0] || '';
       const imageInstruction = img1
-        ? `\n\nIMAGE PLACEMENT RULES (STRICTLY FOLLOW):\n- Insert exactly ONE <img> tag near the top of the article (after the first paragraph) using this URL:\n  IMAGE_1: ${img1}\n- Insert exactly ONE more <img> tag roughly in the middle of the article using this URL:\n  IMAGE_2: ${img2}\n- Each <img> MUST have a unique, descriptive alt attribute relevant to its placement context.\n- Do NOT use IMAGE_1 and IMAGE_2 interchangeably — IMAGE_1 goes near the top, IMAGE_2 goes in the middle.\n- Do NOT insert more than 2 images total. Do NOT repeat the same URL twice.`
+        ? `\n\nIMAGE PLACEMENT RULES (STRICTLY FOLLOW):\n- Insert exactly ONE <img> tag near the top of the article (after the first paragraph) using this URL:\n  IMAGE_1: ${img1}\n- Insert exactly ONE more <img> tag roughly in the middle of the article using this URL:\n  IMAGE_2: ${img2}\n- Each <img> MUST have a unique, descriptive alt attribute relevant to the content context.\n- Do NOT use IMAGE_1 and IMAGE_2 interchangeably. Do NOT repeat the same URL twice. Do NOT insert more than 2 images total.`
         : '';
       const totalWordTarget = targetWords || outline.reduce((sum: number, h: any) => sum + (h.wordCountTarget || 200), 0) || 2000;
-      activePrompt = `${prompt}${imageInstruction}\n\nCRITICAL WRITING RULES:\n- TOTAL WORD COUNT TARGET: Write exactly ${totalWordTarget} words of body text (±10%). Do NOT write more. If you reach the target before all headings, trim each section proportionally. If you finish all headings under target, expand the last few sections.\n- Write like a knowledgeable human, not a marketing brochure. Mix short punchy sentences with detailed explanations.\n- Do NOT use cliché phrases: "In today's digital landscape", "game-changer", "harness the power", "take it to the next level", "dive into", "it's important to note".\n- Include specific examples, numbers, and comparisons to make each section substantive.\n- Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags). No markdown fences or backticks.`;
+
+      // Detect if this is an informational keyword and filter the prompt accordingly
+      const isInfoKw = isInformationalKeyword(targetKw);
+
+      // For informational keywords, validate entities/ngrams in the prompt:
+      // Strip commercial phrases like "hire X", "best X reviews", "outsourcing X" that
+      // got injected from the store before our fixes were applied.
+      let cleanedPrompt = prompt || '';
+      if (isInfoKw && cleanedPrompt) {
+        // Remove lines that contain obviously commercial/irrelevant injected phrases
+        const badPatterns = [
+          /\b(hire|outsourcing|outsource|agency|services|near me|affordable|cheap|professional)\s+/gi,
+          /\b(best|top|compare|reviews?|comparison)\s+(?=what is|how to|why is)/gi,
+        ];
+        // Replace known commercial n-gram templates with informational equivalents
+        cleanedPrompt = cleanedPrompt
+          .replace(/\btop [^\n]+ in 202\d/gi, '')
+          .replace(/\bhire [^,\n]+/gi, '')
+          .replace(/\boutsourcing [^,\n]+/gi, '')
+          .replace(/\benterprise [^,\n]+/gi, '')
+          .replace(/\bbootstrapped [^,\n]+/gi, '')
+          .replace(/\bstealth [^,\n]+/gi, '')
+          .replace(/\bfrugal founder [^,\n]+/gi, '')
+          .replace(/\bon-demand [^,\n]+/gi, '');
+      }
+
+      const writingStyle = isInfoKw
+        ? `WRITING STYLE: Educational and authoritative. Write like a knowledgeable expert explaining a technical topic clearly to a reader who wants to genuinely understand it. Use concrete examples, analogies, and precise technical terminology where appropriate.`
+        : `WRITING STYLE: Engaging and persuasive. Write like a knowledgeable product expert helping a reader make an informed decision. Include specific comparisons, real-world results, and actionable recommendations.`;
+
+      activePrompt = `${cleanedPrompt}${imageInstruction}\n\n${writingStyle}\n\nCRITICAL WRITING RULES:\n- TOTAL WORD COUNT TARGET: Write exactly ${totalWordTarget} words (±10%). Distribute words proportionally across all sections based on their budgets.\n- ACCURACY: Only state facts that are verifiably true about ${targetKw}. Do NOT invent statistics, features, or capabilities.\n- ANTI-STUFFING: The primary keyword "${targetKw}" should appear 8–15 times naturally across the full article. Use semantic variations and synonyms for additional mentions.\n- SUBSTANCE: Every section must contain concrete, specific information — no filler paragraphs. Include code examples, formulas, diagrams descriptions, or comparison tables where relevant.\n- STRUCTURE: Use <ul>/<ol> for any list of 3+ items. Use <table> for comparisons. Keep <p> tags to 3 sentences max.\n- FORBIDDEN PHRASES: "In today's digital landscape", "game-changer", "harness the power", "take it to the next level", "dive into", "it's important to note", "cutting-edge", "leverage".\n- Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags). No markdown fences or backtick code blocks.`;
     }
 
     // A. Check for OpenAI Generation
@@ -1021,7 +1346,16 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
           messages: [
             {
               role: 'system',
-              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences). IMPORTANT: Always complete every section fully. Never stop mid-sentence or mid-section.'
+              content: `You are a subject-matter expert and senior technical writer. You write detailed, accurate, human-quality articles that a domain expert would be proud to publish.
+
+Your writing rules:
+- Sound like a knowledgeable person explaining something to a peer — not a marketer.
+- Vary sentence length: mix short punchy statements with longer, more detailed explanations.
+- Every paragraph must contain at least ONE specific, concrete detail: a number, a named concept, a mechanism, an example, or a comparison. No vague generalities.
+- For technical topics: use correct terminology, explain mechanisms accurately, include code-style examples or formulas where relevant.
+- FORBIDDEN phrases (never use): "In today's digital landscape", "When it comes to", "One thing worth paying attention to", "It's important to note", "Game-changer", "Cutting-edge", "Harness the power", "Dive into", "Take it to the next level", "Leverage", "Unlock the potential", "In conclusion, it is clear that".
+- Output valid clean HTML only: H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags. No HTML head/body wraps, no markdown fences.
+- CRITICAL: Always complete every section fully. Never stop mid-sentence or mid-section.`
             },
             {
               role: 'user',
@@ -1046,12 +1380,26 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
 
     // B. Check for Gemini Generation
     if (provider === 'gemini' && geminiKey) {
+      const geminiSystemInstruction = `You are a subject-matter expert and senior technical writer. You write detailed, accurate, human-quality articles that a domain expert would be proud to publish.
+
+Your writing rules:
+- Sound like a knowledgeable person explaining something to a peer — not a marketer.
+- Vary sentence length: mix short punchy statements with longer, more detailed explanations.
+- Every paragraph must contain at least ONE specific, concrete detail: a number, a named concept, a mechanism, an example, or a comparison. No vague generalities.
+- For technical topics: use correct terminology, explain mechanisms accurately, include code-style examples or formulas where relevant.
+- FORBIDDEN phrases (never use): "In today's digital landscape", "When it comes to", "One thing worth paying attention to", "It's important to note", "Game-changer", "Cutting-edge", "Harness the power", "Dive into", "Take it to the next level", "Leverage", "Unlock the potential", "In conclusion, it is clear that".
+- Output valid clean HTML only: H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags. No HTML head/body wraps, no markdown fences.
+- CRITICAL: Always complete every section fully. Never stop mid-sentence or mid-section.`;
+
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: geminiSystemInstruction }]
+          },
           contents: [
             {
               parts: [
@@ -1093,7 +1441,16 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
           messages: [
             {
               role: 'system',
-              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences). IMPORTANT: Always complete every section fully. Never stop mid-sentence or mid-section.'
+              content: `You are a subject-matter expert and senior technical writer. You write detailed, accurate, human-quality articles that a domain expert would be proud to publish.
+
+Your writing rules:
+- Sound like a knowledgeable person explaining something to a peer — not a marketer.
+- Vary sentence length: mix short punchy statements with longer, more detailed explanations.
+- Every paragraph must contain at least ONE specific, concrete detail: a number, a named concept, a mechanism, an example, or a comparison. No vague generalities.
+- For technical topics: use correct terminology, explain mechanisms accurately, include code-style examples or formulas where relevant.
+- FORBIDDEN phrases (never use): "In today's digital landscape", "When it comes to", "One thing worth paying attention to", "It's important to note", "Game-changer", "Cutting-edge", "Harness the power", "Dive into", "Take it to the next level", "Leverage", "Unlock the potential", "In conclusion, it is clear that".
+- Output valid clean HTML only: H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags. No HTML head/body wraps, no markdown fences.
+- CRITICAL: Always complete every section fully. Never stop mid-sentence or mid-section.`
             },
             {
               role: 'user',

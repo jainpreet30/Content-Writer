@@ -137,40 +137,47 @@ export default function AutopilotWriter() {
       }
 
       // --- Step 2: Scraping Competitor Structures ---
-      stepId = addLog('Analyzing heading outlines...', 'loading');
+      stepId = addLog('Analyzing competitor content structures...', 'loading');
       let extractedHeadings: any[] = [];
       let fullScrapedText = '';
 
       if (urls.length > 0) {
-        updateLog(stepId, { message: `Scraping competitor structures: ${urls[0]}...` });
-        try {
-          const res = await fetch('/api/scrape', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: urls[0] }),
-          });
-          const data = await res.json();
-          if (res.ok && data.headings) {
-            extractedHeadings = data.headings.map((h: any) => ({
-              id: h.id,
-              type: h.type,
-              text: h.text,
-              wordCountTarget: 200 // default budget per section
-            }));
-            fullScrapedText = data.fullText || '';
-            updateLog(stepId, { 
-              message: `Scraped outline and structure successfully (${extractedHeadings.length} headings).`, 
-              status: 'success' 
-            });
-          } else {
-            updateLog(stepId, { 
-              message: 'Failed scraping URL content. Creating outline with AI...', 
-            });
+        // Scrape all competitor URLs and merge their content
+        const scrapeResults = await Promise.allSettled(
+          urls.slice(0, 3).map(url =>
+            fetch('/api/scrape', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            }).then(r => r.json())
+          )
+        );
+
+        for (const result of scrapeResults) {
+          if (result.status === 'fulfilled' && result.value?.headings) {
+            // Use headings from the first successfully scraped URL
+            if (extractedHeadings.length === 0) {
+              extractedHeadings = result.value.headings.map((h: any) => ({
+                id: h.id,
+                type: h.type,
+                text: h.text,
+                wordCountTarget: 200,
+              }));
+            }
+            // Accumulate text from all scraped pages for richer context
+            if (result.value.fullText) {
+              fullScrapedText += '\n\n' + result.value.fullText;
+            }
           }
-        } catch (e) {
-          updateLog(stepId, { 
-            message: 'Failed scraping competitor URL. Creating outline with AI...', 
+        }
+
+        if (extractedHeadings.length > 0) {
+          updateLog(stepId, {
+            message: `Scraped ${urls.length} competitor URL(s) — ${extractedHeadings.length} headings, ${Math.round(fullScrapedText.length / 5)} estimated words of context.`,
+            status: 'success',
           });
+        } else {
+          updateLog(stepId, { message: 'Scraping returned no headings. Creating AI outline...' });
         }
       }
 
@@ -372,47 +379,57 @@ export default function AutopilotWriter() {
       }
 
       // --- Step 5: Compiling System Prompt & Generating content ---
-      stepId = addLog('Compiling Master Prompt & Generating Content...', 'loading');
-      
-      // Build master prompt payload
+      stepId = addLog('Compiling expert prompt & generating content...', 'loading');
+
       const activeRules = seoRules.filter(r => r.active).map(r => r.promptGuideline);
-      
-      const compiledPrompt = `You are an expert SEO Content Writer. Generate a highly optimized article matching this configuration:
+
+      // Trim competitor content to ~4000 chars to keep prompt efficient
+      const competitorSnippet = fullScrapedText
+        ? fullScrapedText.replace(/\s+/g, ' ').trim().slice(0, 4000)
+        : '';
+
+      const compiledPrompt = `You are a senior content writer and SEO expert. Write a comprehensive, deeply informative article about "${mainKeyword}".
 
 PRIMARY KEYWORD: ${mainKeyword}
-TONE & STYLE: Professional, Technical, Advanced
-TARGET WORD COUNT: ${targetWords} words
+TARGET WORD COUNT: ${targetWords} words (±10%)
+TONE: Professional, educational, authoritative — written for someone who genuinely wants to understand this topic.
 
-ARTICLE OUTLINE & WORD BUDGETS:
-${extractedHeadings.map((h, i) => `- Heading: ${h.text} (${h.type}) -> Target word count: ${h.wordCountTarget} words.`).join('\n')}
+ARTICLE OUTLINE (follow this structure exactly):
+${extractedHeadings.map((h, i) => `${i + 1}. [${h.type}] ${h.text} → ~${h.wordCountTarget} words`).join('\n')}
 
-REQUIRED ENTITIES TO INCLUDE:
-${activeEntities.slice(0, 10).join(', ')}
+KEY TERMS & ENTITIES TO INCLUDE NATURALLY:
+${activeEntities.slice(0, 12).join(', ')}
 
-REQUIRED N-GRAMS & LSI PHRASES:
-${activeNGrams.slice(0, 10).join(', ')}
+IMPORTANT LSI PHRASES TO WEAVE IN:
+${activeNGrams.slice(0, 12).join(', ')}
 
+${competitorSnippet ? `COMPETITOR CONTEXT (use this to understand what the topic covers, do NOT copy — use it as a knowledge base):
+<COMPETITOR_CONTEXT>
+${competitorSnippet}
+</COMPETITOR_CONTEXT>
+
+` : ''}CONTENT QUALITY RULES:
+- Write as a subject-matter expert explaining to an intelligent reader, not a generic marketing piece.
+- Every section must have real substance: concrete examples, numbers, comparisons, or practical explanations.
+- Do NOT use AI clichés: "In today's digital landscape", "game-changer", "harness the power", "it's important to note", "dive into", "leverage", "cutting-edge".
+- Vary sentence length — mix short punchy sentences with detailed technical ones.
+- Use <strong> for key terms on first mention. Use <ul>/<ol> for lists of 3+ items instead of paragraph blocks.
+- Use <table> for any comparisons, feature matrices, or side-by-side evaluations.
+- Paragraphs must be 2–4 sentences max. No walls of text.
+- Accuracy matters: only state facts that are true about ${mainKeyword}.
+${activeRules.length > 0 ? `
 ADDITIONAL SEO GUIDELINES:
-${activeRules.map((rule, idx) => `${idx + 1}. ${rule}`).join('\n')}
+${activeRules.map((rule, idx) => `${idx + 1}. ${rule}`).join('\n')}` : ''}
 
-FORMATTING & STRUCTURE RULES:
-1. Use rich HTML formatting. Bold key terms using <strong>.
-2. Structure sections based on keyword category rules:
-   - If the keyword implies a comparison or contains 'vs', 'compare', 'comparison', 'difference', 'alternative', generate comparative HTML tables (<table>) to contrast parameters (specs, features, rating, cost).
-   - If the keyword implies a list, ranking, or review (contains 'best', 'top', 'reviews', 'featured', 'choice', 'software', 'app', 'tool'), structure specifications using <ul>, and provide clear Pro and Con bullet points for each item/product mentioned. (Do NOT use emojis like 👍 or 👎; prefix with standard text like 'Pro:' or 'Con:').
-   - If the keyword implies a guide, tutorial, or setup (contains 'how to', 'guide', 'tutorial', 'step', 'setup', 'configure', 'process', 'workflow'), use numbered step-by-step lists (<ol>) to outline procedures.
-   - If the keyword implies services, agency, or company (contains 'company', 'agency', 'service', 'firm', 'provider'), include service checklists, package comparison tables, and a short Frequently Asked Questions (FAQ) section at the end with bolded questions and clear answers.
-3. CRITICAL: Whenever introducing features, items, options, steps, or pros & cons, you MUST use bullet points (<ul> with <li> tags) or numbered lists (<ol> with <li> tags) rather than long paragraph blocks.
-4. Avoid walls of text. Keep paragraphs (<p>) brief (maximum 2-3 sentences) to ensure the content is highly scannable and readable.
+Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, TABLE, TR, TH, TD, IMG tags). No markdown fences, no backtick code blocks, no conversational intro or outro text.`;
 
-Generate the full article following this structure explicitly. Output ONLY clean valid HTML. Do not wrap in markdown \`\`\`html blocks or include conversational intro/outro text.`;
+      updateLog(stepId, { message: 'Sending to AI content engine...' });
 
-      updateLog(stepId, { message: 'Sending prompt to AI Content Engine...' });
-      
       const genRes = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'write',
           prompt: compiledPrompt,
           keyword: mainKeyword,
           provider,
@@ -420,7 +437,8 @@ Generate the full article following this structure explicitly. Output ONLY clean
           outline: extractedHeadings,
           entities: activeEntities,
           ngrams: activeNGrams,
-          competitorContent: fullScrapedText
+          competitorContent: fullScrapedText,
+          targetWords,
         }),
       });
 
