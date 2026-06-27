@@ -998,10 +998,14 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
 </RULES>`;
     } else if (mode === 'write') {
       // Build a structured write prompt that produces high-quality content
-      const imageInstruction = uniqueImageUrls.length > 0
-        ? `\n\nIMAGE PLACEMENT: Insert exactly ONE image near the top of the article and at most ONE more image deeper in the article. Use ONLY these URLs (do NOT repeat the same URL):\n${uniqueImageUrls.map((url: string, i: number) => `${i + 1}. ${url}`).join('\n')}\nEach <img> must have a descriptive alt attribute. Do NOT insert more than 2 images total.`
+      // Ensure we have at least 2 distinct image URLs for top and mid placement
+      const img1 = uniqueImageUrls[0] || '';
+      const img2 = uniqueImageUrls[1] || uniqueImageUrls[0] || '';
+      const imageInstruction = img1
+        ? `\n\nIMAGE PLACEMENT RULES (STRICTLY FOLLOW):\n- Insert exactly ONE <img> tag near the top of the article (after the first paragraph) using this URL:\n  IMAGE_1: ${img1}\n- Insert exactly ONE more <img> tag roughly in the middle of the article using this URL:\n  IMAGE_2: ${img2}\n- Each <img> MUST have a unique, descriptive alt attribute relevant to its placement context.\n- Do NOT use IMAGE_1 and IMAGE_2 interchangeably — IMAGE_1 goes near the top, IMAGE_2 goes in the middle.\n- Do NOT insert more than 2 images total. Do NOT repeat the same URL twice.`
         : '';
-      activePrompt = `${prompt}${imageInstruction}\n\nCRITICAL WRITING RULES:\n- Write like a knowledgeable human, not a marketing brochure. Mix short punchy sentences with detailed explanations.\n- Do NOT use cliché phrases: "In today's digital landscape", "game-changer", "harness the power", "take it to the next level", "dive into", "it's important to note".\n- Include specific examples, numbers, and comparisons to make each section substantive.\n- Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags). No markdown fences or backticks.`;
+      const totalWordTarget = targetWords || outline.reduce((sum: number, h: any) => sum + (h.wordCountTarget || 200), 0) || 2000;
+      activePrompt = `${prompt}${imageInstruction}\n\nCRITICAL WRITING RULES:\n- TOTAL WORD COUNT TARGET: Write exactly ${totalWordTarget} words of body text (±10%). Do NOT write more. If you reach the target before all headings, trim each section proportionally. If you finish all headings under target, expand the last few sections.\n- Write like a knowledgeable human, not a marketing brochure. Mix short punchy sentences with detailed explanations.\n- Do NOT use cliché phrases: "In today's digital landscape", "game-changer", "harness the power", "take it to the next level", "dive into", "it's important to note".\n- Include specific examples, numbers, and comparisons to make each section substantive.\n- Return ONLY clean HTML (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags). No markdown fences or backticks.`;
     }
 
     // A. Check for OpenAI Generation
@@ -1017,7 +1021,7 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
           messages: [
             {
               role: 'system',
-              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences).'
+              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences). IMPORTANT: Always complete every section fully. Never stop mid-sentence or mid-section.'
             },
             {
               role: 'user',
@@ -1025,7 +1029,7 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
             }
           ],
           temperature: 0.72,
-          max_tokens: 4096
+          max_tokens: 8192
         })
       });
 
@@ -1089,7 +1093,7 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
           messages: [
             {
               role: 'system',
-              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences).'
+              content: 'You are a senior content writer who produces detailed, human-quality articles. Your writing sounds natural — like a knowledgeable person explaining something to a peer. You vary sentence length, include specific examples and data, and avoid generic filler. Output valid clean HTML only (H2, H3, H4, P, UL, OL, LI, STRONG, EM, IMG, TABLE tags — no HTML head/body wraps, no markdown fences). IMPORTANT: Always complete every section fully. Never stop mid-sentence or mid-section.'
             },
             {
               role: 'user',
@@ -1097,7 +1101,7 @@ ${recommendations.map((r: string, i: number) => `${i + 1}. ${r}`).join('\n')}
             }
           ],
           temperature: 0.72,
-          max_tokens: 4096
+          max_tokens: 8192
         })
       });
 

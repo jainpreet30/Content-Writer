@@ -17,7 +17,8 @@ import {
   TrendingUp,
   FileDown,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
 
 export default function SavedArticles() {
@@ -34,6 +35,9 @@ export default function SavedArticles() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'in-progress' | 'completed'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openDownloadId, setOpenDownloadId] = useState<string | null>(null);
+  const [pdfLoadingId, setPdfLoadingId] = useState<string | null>(null);
+  const [wordLoadingId, setWordLoadingId] = useState<string | null>(null);
 
   // Stats computation
   const stats = useMemo(() => {
@@ -138,7 +142,7 @@ export default function SavedArticles() {
     return md.trim();
   };
 
-  // Download helper
+  // Download helper (HTML / Markdown)
   const handleDownload = (article: SavedArticle, format: 'html' | 'md') => {
     let content = article.content;
     let filename = `${article.keyword || 'article'}_${article.id.slice(-4)}`;
@@ -160,6 +164,138 @@ export default function SavedArticles() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Download as PDF
+  const handleDownloadPdf = async (article: SavedArticle) => {
+    setPdfLoadingId(article.id);
+    setOpenDownloadId(null);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
+
+      const articleTitle = article.keyword || article.title || 'Article';
+
+      const printDiv = document.createElement('div');
+      printDiv.style.cssText = [
+        'position:fixed', 'left:-9999px', 'top:0',
+        'width:794px',
+        'padding:48px 56px',
+        'background:#ffffff',
+        'color:#111111',
+        'font-family:Georgia,serif',
+        'font-size:14px',
+        'line-height:1.8',
+      ].join(';');
+      printDiv.innerHTML = `
+        <h1 style="font-size:22px;font-weight:700;margin-bottom:24px;color:#1a1a2e;border-bottom:2px solid #7c3aed;padding-bottom:12px">${articleTitle}</h1>
+        <style>
+          h2{font-size:18px;font-weight:700;margin:28px 0 10px;color:#2d1b69}
+          h3{font-size:15px;font-weight:700;margin:20px 0 8px;color:#3730a3}
+          h4{font-size:13px;font-weight:700;margin:16px 0 6px;color:#4338ca}
+          p{margin:0 0 12px}
+          ul,ol{margin:0 0 12px;padding-left:22px}
+          li{margin-bottom:4px}
+          strong{font-weight:700}
+          em{font-style:italic}
+          img{max-width:100%;height:auto;margin:16px 0;border-radius:6px}
+          table{width:100%;border-collapse:collapse;margin:16px 0}
+          th,td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;font-size:13px}
+          th{background:#f1f5f9;font-weight:700}
+        </style>
+        ${article.content}
+      `;
+      document.body.appendChild(printDiv);
+
+      const canvas = await html2canvas(printDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+      });
+      document.body.removeChild(printDiv);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let y = 0;
+      while (y < imgHeight) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -y, imgWidth, imgHeight);
+        y += pageHeight;
+      }
+
+      const safeTitle = articleTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      pdf.save(`${safeTitle}.pdf`);
+    } catch (e) {
+      console.error('PDF export failed:', e);
+      alert('PDF export failed. Please try again.');
+    } finally {
+      setPdfLoadingId(null);
+    }
+  };
+
+  // Download as Word (.docx)
+  const handleDownloadWord = async (article: SavedArticle) => {
+    setWordLoadingId(article.id);
+    setOpenDownloadId(null);
+    try {
+      const htmlDocx = await import('html-docx-js/dist/html-docx');
+      const convert = htmlDocx.default?.asBlob ?? (htmlDocx as any).asBlob;
+
+      const articleTitle = article.keyword || article.title || 'Article';
+
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:w="urn:schemas-microsoft-com:office:word"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8" />
+          <title>${articleTitle}</title>
+          <style>
+            body  { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #111; margin: 1in; line-height: 1.6; }
+            h1    { font-size: 20pt; color: #1a1a2e; border-bottom: 2pt solid #7c3aed; padding-bottom: 6pt; margin-bottom: 12pt; }
+            h2    { font-size: 16pt; color: #2d1b69; margin-top: 20pt; margin-bottom: 8pt; }
+            h3    { font-size: 13pt; color: #3730a3; margin-top: 14pt; margin-bottom: 6pt; }
+            h4    { font-size: 11pt; color: #4338ca; margin-top: 10pt; margin-bottom: 4pt; }
+            p     { margin: 0 0 8pt; }
+            ul, ol{ margin: 0 0 8pt; padding-left: 18pt; }
+            li    { margin-bottom: 3pt; }
+            strong{ font-weight: bold; }
+            em    { font-style: italic; }
+            table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
+            th, td{ border: 1pt solid #94a3b8; padding: 6pt 8pt; font-size: 10pt; }
+            th    { background: #f1f5f9; font-weight: bold; }
+            img   { max-width: 100%; }
+          </style>
+        </head>
+        <body>
+          <h1>${articleTitle}</h1>
+          ${article.content}
+        </body>
+        </html>
+      `;
+
+      const blob = convert(fullHtml, { orientation: 'portrait', margins: { top: 720, bottom: 720, left: 900, right: 900 } });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = articleTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      a.download = `${safeTitle}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Word export failed:', e);
+      alert('Word export failed. Please try again.');
+    } finally {
+      setWordLoadingId(null);
+    }
   };
 
   const handleCreateNew = () => {
@@ -327,30 +463,76 @@ export default function SavedArticles() {
                     <Copy className="w-3.5 h-3.5" />
                   </button>
 
-                  <div className="relative group/download">
+                  <div className="relative">
                     <button
-                      className="p-2 rounded-lg bg-[#181a32] hover:bg-[#202347] border border-[#2b315d] text-gray-400 hover:text-white transition"
+                      onClick={() => setOpenDownloadId(openDownloadId === article.id ? null : article.id)}
+                      className="p-2 rounded-lg bg-[#181a32] hover:bg-[#202347] border border-[#2b315d] text-gray-400 hover:text-white transition flex items-center gap-0.5"
                       title="Download Options"
                     >
-                      <Download className="w-3.5 h-3.5" />
+                      {(pdfLoadingId === article.id || wordLoadingId === article.id)
+                        ? <div className="w-3.5 h-3.5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                        : <Download className="w-3.5 h-3.5" />
+                      }
+                      <ChevronDown className={`w-2.5 h-2.5 transition-transform ${openDownloadId === article.id ? 'rotate-180' : ''}`} />
                     </button>
-                    {/* Hover dropdown for formats */}
-                    <div className="absolute right-0 bottom-full mb-1 bg-[#15182d] border border-[#2c325e] rounded-lg shadow-xl py-1 hidden group-hover/download:block min-w-[100px] z-10">
-                      <button
-                        onClick={() => handleDownload(article, 'md')}
-                        className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-[#222749] hover:text-white flex items-center gap-1.5"
-                      >
-                        <FileText className="w-3 h-3 text-pink-400" />
-                        <span>Markdown</span>
-                      </button>
-                      <button
-                        onClick={() => handleDownload(article, 'html')}
-                        className="w-full text-left px-3 py-1.5 text-xs text-gray-300 hover:bg-[#222749] hover:text-white flex items-center gap-1.5"
-                      >
-                        <FileDown className="w-3 h-3 text-violet-400" />
-                        <span>HTML File</span>
-                      </button>
-                    </div>
+
+                    {openDownloadId === article.id && (
+                      <>
+                        {/* backdrop */}
+                        <div className="fixed inset-0 z-40" onClick={() => setOpenDownloadId(null)} />
+                        <div className="absolute right-0 bottom-full mb-1.5 z-50 w-44 bg-[#13162b] border border-[#2c325e] rounded-xl shadow-2xl overflow-hidden">
+                          {/* PDF */}
+                          <button
+                            onClick={() => handleDownloadPdf(article)}
+                            disabled={pdfLoadingId === article.id}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-rose-300 hover:bg-rose-950/30 transition disabled:opacity-50"
+                          >
+                            <FileDown className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                            <div className="text-left">
+                              <div className="font-extrabold">PDF File</div>
+                              <div className="text-[10px] text-gray-500 font-normal">Printable document</div>
+                            </div>
+                          </button>
+                          <div className="h-px bg-[#1e233d]" />
+                          {/* Word */}
+                          <button
+                            onClick={() => handleDownloadWord(article)}
+                            disabled={wordLoadingId === article.id}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-blue-300 hover:bg-blue-950/30 transition disabled:opacity-50"
+                          >
+                            <FileText className="w-3.5 h-3.5 shrink-0 text-blue-400" />
+                            <div className="text-left">
+                              <div className="font-extrabold">Word File</div>
+                              <div className="text-[10px] text-gray-500 font-normal">Editable .docx</div>
+                            </div>
+                          </button>
+                          <div className="h-px bg-[#1e233d]" />
+                          {/* Markdown */}
+                          <button
+                            onClick={() => { handleDownload(article, 'md'); setOpenDownloadId(null); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-pink-300 hover:bg-pink-950/20 transition"
+                          >
+                            <FileText className="w-3.5 h-3.5 shrink-0 text-pink-400" />
+                            <div className="text-left">
+                              <div className="font-extrabold">Markdown</div>
+                              <div className="text-[10px] text-gray-500 font-normal">.md format</div>
+                            </div>
+                          </button>
+                          <div className="h-px bg-[#1e233d]" />
+                          {/* HTML */}
+                          <button
+                            onClick={() => { handleDownload(article, 'html'); setOpenDownloadId(null); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-violet-300 hover:bg-violet-950/20 transition"
+                          >
+                            <FileDown className="w-3.5 h-3.5 shrink-0 text-violet-400" />
+                            <div className="text-left">
+                              <div className="font-extrabold">HTML File</div>
+                              <div className="text-[10px] text-gray-500 font-normal">.html format</div>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <button

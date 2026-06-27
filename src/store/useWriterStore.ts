@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface Competitor {
   url: string;
@@ -565,6 +565,10 @@ export const useWriterStore = create<WriterState>()(
     }),
     {
       name: 'seo-writer-store',
+      storage: createJSONStorage(() => localStorage),
+      // Skip automatic rehydration on SSR — we call it manually on the client
+      // so the persisted apiKeys and all other state load correctly after mount.
+      skipHydration: true,
       partialize: (state) => ({
         appMode: state.appMode,
         activeView: state.activeView,
@@ -601,3 +605,10 @@ export const useWriterStore = create<WriterState>()(
     }
   )
 );
+
+// Trigger rehydration from localStorage on the client side only.
+// This must run once after the first render so SSR and client start in sync,
+// then the persisted state (including apiKeys) overwrites the defaults.
+if (typeof window !== 'undefined') {
+  useWriterStore.persist.rehydrate();
+}

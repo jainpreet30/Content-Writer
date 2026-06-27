@@ -25,7 +25,9 @@ import {
   RotateCcw,
   BookOpen,
   Image as ImageIcon,
-  Save
+  Save,
+  Download,
+  FileDown
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 import canvasConfetti from 'canvas-confetti';
@@ -64,6 +66,9 @@ export default function Step13Editor() {
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [showOutlineModal, setShowOutlineModal] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingWord, setDownloadingWord] = useState(false);
   
   // Image search states
   const [showImageModal, setShowImageModal] = useState(false);
@@ -346,6 +351,144 @@ export default function Step13Editor() {
     }
   };
 
+  // ── Download as PDF ──────────────────────────────────────────────
+  const handleDownloadPdf = async () => {
+    if (!editor) return;
+    setDownloadingPdf(true);
+    setShowDownloadMenu(false);
+    try {
+      const { default: jsPDF } = await import('jspdf');
+      const { default: html2canvas } = await import('html2canvas');
+
+      // Build a clean printable HTML page
+      const articleTitle = mainKeyword || 'Article';
+      const htmlContent = editor.getHTML();
+
+      const printDiv = document.createElement('div');
+      printDiv.style.cssText = [
+        'position:fixed', 'left:-9999px', 'top:0',
+        'width:794px',   // A4 width in px at 96dpi
+        'padding:48px 56px',
+        'background:#ffffff',
+        'color:#111111',
+        'font-family:Georgia,serif',
+        'font-size:14px',
+        'line-height:1.8',
+      ].join(';');
+      printDiv.innerHTML = `
+        <h1 style="font-size:22px;font-weight:700;margin-bottom:24px;color:#1a1a2e;border-bottom:2px solid #7c3aed;padding-bottom:12px">${articleTitle}</h1>
+        <style>
+          h2{font-size:18px;font-weight:700;margin:28px 0 10px;color:#2d1b69}
+          h3{font-size:15px;font-weight:700;margin:20px 0 8px;color:#3730a3}
+          h4{font-size:13px;font-weight:700;margin:16px 0 6px;color:#4338ca}
+          p{margin:0 0 12px}
+          ul,ol{margin:0 0 12px;padding-left:22px}
+          li{margin-bottom:4px}
+          strong{font-weight:700}
+          em{font-style:italic}
+          img{max-width:100%;height:auto;margin:16px 0;border-radius:6px}
+          table{width:100%;border-collapse:collapse;margin:16px 0}
+          th,td{border:1px solid #cbd5e1;padding:8px 10px;text-align:left;font-size:13px}
+          th{background:#f1f5f9;font-weight:700}
+        </style>
+        ${htmlContent}
+      `;
+      document.body.appendChild(printDiv);
+
+      const canvas = await html2canvas(printDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+      });
+      document.body.removeChild(printDiv);
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let y = 0;
+      while (y < imgHeight) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -y, imgWidth, imgHeight);
+        y += pageHeight;
+      }
+
+      const safeTitle = articleTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      pdf.save(`${safeTitle}.pdf`);
+    } catch (e) {
+      console.error('PDF export failed:', e);
+      alert('PDF export failed. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  // ── Download as Word (.docx) ─────────────────────────────────────
+  const handleDownloadWord = async () => {
+    if (!editor) return;
+    setDownloadingWord(true);
+    setShowDownloadMenu(false);
+    try {
+      const htmlDocx = await import('html-docx-js/dist/html-docx');
+      const convert = htmlDocx.default?.asBlob ?? (htmlDocx as any).asBlob;
+
+      const articleTitle = mainKeyword || 'Article';
+      const htmlContent = editor.getHTML();
+
+      // Wrap in a full HTML document that Word understands
+      const fullHtml = `
+        <!DOCTYPE html>
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:w="urn:schemas-microsoft-com:office:word"
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8" />
+          <title>${articleTitle}</title>
+          <style>
+            body  { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #111; margin: 1in; line-height: 1.6; }
+            h1    { font-size: 20pt; color: #1a1a2e; border-bottom: 2pt solid #7c3aed; padding-bottom: 6pt; margin-bottom: 12pt; }
+            h2    { font-size: 16pt; color: #2d1b69; margin-top: 20pt; margin-bottom: 8pt; }
+            h3    { font-size: 13pt; color: #3730a3; margin-top: 14pt; margin-bottom: 6pt; }
+            h4    { font-size: 11pt; color: #4338ca; margin-top: 10pt; margin-bottom: 4pt; }
+            p     { margin: 0 0 8pt; }
+            ul, ol{ margin: 0 0 8pt; padding-left: 18pt; }
+            li    { margin-bottom: 3pt; }
+            strong{ font-weight: bold; }
+            em    { font-style: italic; }
+            table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
+            th, td{ border: 1pt solid #94a3b8; padding: 6pt 8pt; font-size: 10pt; }
+            th    { background: #f1f5f9; font-weight: bold; }
+            img   { max-width: 100%; }
+          </style>
+        </head>
+        <body>
+          <h1>${articleTitle}</h1>
+          ${htmlContent}
+        </body>
+        </html>
+      `;
+
+      const blob = convert(fullHtml, { orientation: 'portrait', margins: { top: 720, bottom: 720, left: 900, right: 900 } });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeTitle = articleTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      a.download = `${safeTitle}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Word export failed:', e);
+      alert('Word export failed. Please try again.');
+    } finally {
+      setDownloadingWord(false);
+    }
+  };
+
   const handleGenerateWithAI = async () => {
     setGenerating(true);
     
@@ -376,7 +519,8 @@ export default function Step13Editor() {
           entities: activeEntities,
           ngrams: activeNGrams,
           provider: activeProvider,
-          competitorContent
+          competitorContent,
+          targetWords: totalWordTarget || 2000,
         }),
       });
       const data = await res.json();
@@ -488,6 +632,52 @@ export default function Step13Editor() {
               <Save className="w-3.5 h-3.5" />
               <span>Save Draft</span>
             </button>
+
+            {/* ── Download Dropdown ── */}
+            <div className="relative">
+              <button
+                onClick={() => setShowDownloadMenu(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-950/40 hover:bg-sky-900/40 border border-sky-800/50 text-xs font-bold text-sky-300 transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+                <svg className={`w-3 h-3 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+
+              {showDownloadMenu && (
+                <>
+                  {/* Backdrop to close */}
+                  <div className="fixed inset-0 z-40" onClick={() => setShowDownloadMenu(false)} />
+                  <div className="absolute right-0 top-full mt-1.5 z-50 w-44 bg-[#131627] border border-[#2e345e] rounded-xl shadow-2xl overflow-hidden">
+                    <button
+                      onClick={handleDownloadPdf}
+                      disabled={downloadingPdf}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-bold text-rose-300 hover:bg-rose-950/30 transition disabled:opacity-50"
+                    >
+                      <FileDown className="w-4 h-4 shrink-0" />
+                      <div className="text-left">
+                        <div className="font-extrabold">PDF File</div>
+                        <div className="text-[10px] text-gray-500 font-normal">Printable PDF document</div>
+                      </div>
+                      {downloadingPdf && <div className="ml-auto h-3 w-3 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />}
+                    </button>
+                    <div className="h-px bg-[#232948]" />
+                    <button
+                      onClick={handleDownloadWord}
+                      disabled={downloadingWord}
+                      className="w-full flex items-center gap-2.5 px-4 py-3 text-xs font-bold text-blue-300 hover:bg-blue-950/30 transition disabled:opacity-50"
+                    >
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <div className="text-left">
+                        <div className="font-extrabold">Word File</div>
+                        <div className="text-[10px] text-gray-500 font-normal">Editable .docx document</div>
+                      </div>
+                      {downloadingWord && <div className="ml-auto h-3 w-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
 
             <button
               onClick={() => setShowPromptModal(true)}

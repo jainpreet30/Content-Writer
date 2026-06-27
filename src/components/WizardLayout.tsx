@@ -44,11 +44,13 @@ export default function WizardLayout({ children }: WizardLayoutProps) {
     }
   }, [currentStep]);
 
+  // Sync localKeys from the store whenever apiKeys change.
+  // This covers two cases:
+  // 1. After Zustand rehydrates from localStorage on first mount (apiKeys go from '' to saved values).
+  // 2. When the modal opens, always reflect the latest saved keys.
   useEffect(() => {
-    if (showApiKeyModal) {
-      setLocalKeys(apiKeys);
-    }
-  }, [showApiKeyModal, apiKeys]);
+    setLocalKeys(apiKeys);
+  }, [apiKeys]);
 
   const stepsList = [
     'Competitor Research',
