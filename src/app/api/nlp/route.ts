@@ -79,7 +79,20 @@ function generateDynamicTokens(keywordStr: string) {
   
   let aiEntities: string[] = [];
   
-  if (kwLower.includes('test') || kwLower.includes('qa') || kwLower.includes('quality') || kwLower.includes('automation') || kwLower.includes('software')) {
+  if (kwLower.includes('video') || kwLower.includes('edit') || kwLower.includes('design') || kwLower.includes('photo') || kwLower.includes('audio') || kwLower.includes('graphic') || kwLower.includes('render') || kwLower.includes('media') || kwLower.includes('creative')) {
+    if (kwLower.includes('mobile') || kwLower.includes('phone') || kwLower.includes('android') || kwLower.includes('ios') || kwLower.includes('iphone') || kwLower.includes('ipad') || kwLower.includes('app ') || kwLower.endsWith('app') || kwLower.includes('apps')) {
+      aiEntities = [
+        'CapCut Mobile', 'LumaFusion', 'KineMaster', 'InShot App', 'VN Video Editor', 
+        'Adobe Premiere Rush', 'Splice App', 'Alight Motion', 'FilmoraGo', 'iMovie Mobile'
+      ];
+    } else {
+      aiEntities = [
+        'Adobe Premiere Pro', 'DaVinci Resolve', 'Final Cut Pro', 'CapCut PC', 'Filmora', 
+        'Avid Media Composer', 'PowerDirector', 'HitFilm', 'Sony Vegas Pro', 
+        'Lightworks', 'Shotcut', 'Adobe After Effects', 'Photoshop', 'Canva'
+      ];
+    }
+  } else if (kwLower.includes('test') || kwLower.includes('qa') || kwLower.includes('quality') || kwLower.includes('automation') || kwLower.includes('software')) {
     aiEntities = [
       'Selenium', 'Appium', 'Cypress', 'Playwright', 'Jira', 'TestRail', 
       'BrowserStack', 'Jenkins', 'GitHub', 'GitLab', 'Clutch', 'GoodFirms', 

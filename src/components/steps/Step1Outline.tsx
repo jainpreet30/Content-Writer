@@ -26,9 +26,12 @@ export default function Step1Outline() {
 
   const [mounted, setMounted] = useState(false);
   const [selectedUrl, setSelectedUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<'append' | 'overwrite' | null>(null);
   const [customHeadingText, setCustomHeadingText] = useState('');
   const [customHeadingType, setCustomHeadingType] = useState<'H2' | 'H3' | 'H4'>('H2');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loading = loadingAction !== null;
 
   useEffect(() => {
     setMounted(true);
@@ -39,7 +42,8 @@ export default function Step1Outline() {
 
   const handleScrapeOutline = async (overwrite: boolean) => {
     if (!selectedUrl) return;
-    setLoading(true);
+    setLoadingAction(overwrite ? 'overwrite' : 'append');
+    setErrorMsg(null);
     try {
       const res = await fetch('/api/scrape', {
         method: 'POST',
@@ -67,32 +71,18 @@ export default function Step1Outline() {
           setOutline([...outline, ...filteredNewHeadings]);
         }
       } else {
-        if (overwrite) handleUseDefaultOutline();
+        setErrorMsg('This link does not contain any subheadings to extract. Please select a different link or add custom headings below.');
       }
     } catch (e) {
       console.error(e);
-      if (overwrite) handleUseDefaultOutline();
+      setErrorMsg('Failed to scrape outline from the selected link. Please verify the URL or try another link.');
     } finally {
-      setLoading(false);
+      setLoadingAction(null);
     }
   };
 
-  const handleUseDefaultOutline = () => {
-    const defaultHeadings: HeadingItem[] = [
-      { id: 'h1', type: 'H2', text: 'Featured SEO Tools 2026', wordCountTarget: 200 },
-      { id: 'h2', type: 'H2', text: 'Our Top Picks', wordCountTarget: 200 },
-      { id: 'h3', type: 'H3', text: 'Ubersuggest', wordCountTarget: 200 },
-      { id: 'h4', type: 'H3', text: 'MOZ', wordCountTarget: 200 },
-      { id: 'h5', type: 'H2', text: 'What Is SEO?', wordCountTarget: 200 },
-      { id: 'h6', type: 'H3', text: 'Technical SEO:', wordCountTarget: 200 },
-      { id: 'h7', type: 'H3', text: 'On-page SEO:', wordCountTarget: 200 },
-      { id: 'h8', type: 'H3', text: 'Off-page SEO:', wordCountTarget: 200 },
-      { id: 'h9', type: 'H2', text: 'What Are SEO Tools?', wordCountTarget: 200 },
-      { id: 'h10', type: 'H3', text: 'Purpose:', wordCountTarget: 200 },
-      { id: 'h11', type: 'H3', text: 'Technical Analysis:', wordCountTarget: 200 },
-      { id: 'h12', type: 'H3', text: 'Backlink Analysis:', wordCountTarget: 200 }
-    ];
-    setOutline(defaultHeadings);
+  const handleClearOutline = () => {
+    setOutline([]);
   };
 
   const handleAddCustomHeading = () => {
@@ -164,48 +154,56 @@ export default function Step1Outline() {
           Extract Outlines from Competitors
         </label>
         
-        <div className="flex flex-col md:flex-row gap-3">
-          <select
-            value={selectedUrl}
-            onChange={(e) => setSelectedUrl(e.target.value)}
-            className="flex-1 px-4 py-2.5 bg-[#191d35] border border-[#2a315c] rounded-xl outline-none text-sm text-white focus:border-violet-500 transition"
-          >
-            {competitors.map((c) => (
-              <option key={c.url} value={c.url}>
-                {c.url}
-              </option>
-            ))}
-            {competitors.length === 0 && (
-              <option value="">-- No Competitors Added --</option>
-            )}
-          </select>
+        <div className="space-y-4">
+          <div>
+            <select
+              value={selectedUrl}
+              onChange={(e) => setSelectedUrl(e.target.value)}
+              className="w-full px-4 py-2.5 bg-[#191d35] border border-[#2a315c] rounded-xl outline-none text-sm text-white focus:border-violet-500 transition"
+            >
+              {competitors.map((c) => (
+                <option key={c.url} value={c.url}>
+                  {c.url}
+                </option>
+              ))}
+              {competitors.length === 0 && (
+                <option value="">-- No Competitors Added --</option>
+              )}
+            </select>
+          </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full">
             <button
               onClick={() => handleScrapeOutline(false)}
               disabled={loading || !selectedUrl}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white rounded-xl flex items-center gap-1.5 transition disabled:opacity-50"
+              className="flex-1 w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-sm text-white rounded-xl flex items-center justify-center gap-1.5 transition disabled:opacity-50"
             >
-              <span>{loading ? 'Appending...' : 'Extract & Append'}</span>
+              <span>{loadingAction === 'append' ? 'Appending...' : 'Extract & Append'}</span>
             </button>
 
             <button
               onClick={() => handleScrapeOutline(true)}
               disabled={loading || !selectedUrl}
-              className="px-5 py-2.5 bg-[#2a1e1e] hover:bg-[#3d2727] border border-[#522b2b] font-bold text-sm text-rose-450 rounded-xl flex items-center gap-1.5 transition disabled:opacity-50"
+              className="flex-1 w-full px-4 py-2.5 bg-[#2a1e1e] hover:bg-[#3d2727] border border-[#522b2b] font-bold text-sm text-rose-450 rounded-xl flex items-center justify-center gap-1.5 transition disabled:opacity-50"
             >
-              <span>Overwrite Current</span>
+              <span>{loadingAction === 'overwrite' ? 'Overwriting...' : 'Overwrite Current'}</span>
             </button>
 
             <button
-              onClick={handleUseDefaultOutline}
-              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 font-bold text-sm text-white rounded-xl flex items-center gap-1.5 transition"
+              onClick={handleClearOutline}
+              disabled={outline.length === 0 || loading}
+              className="flex-1 w-full px-4 py-2.5 bg-[#2a1e1e] hover:bg-[#3d2727] border border-[#522b2b] font-bold text-sm text-rose-450 rounded-xl flex items-center justify-center gap-1.5 transition disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Use Mock Outline</span>
+              <Trash2 className="w-4 h-4" />
+              <span>Clear All Outline</span>
             </button>
           </div>
         </div>
+        {errorMsg && (
+          <div className="p-3.5 bg-rose-950/30 border border-rose-500/30 rounded-xl text-rose-300 text-xs mt-3 leading-relaxed">
+            <strong>⚠️ Extraction Alert:</strong> {errorMsg}
+          </div>
+        )}
       </div>
 
       {/* Editor Outline List */}

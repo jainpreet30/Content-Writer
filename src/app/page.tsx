@@ -20,10 +20,31 @@ import Step11Instructions from '@/components/steps/Step11Instructions';
 import Step12Prompt from '@/components/steps/Step12Prompt';
 import Step13Editor from '@/components/steps/Step13Editor';
 
+import AutopilotWriter from '@/components/AutopilotWriter';
+import SavedArticles from '@/components/SavedArticles';
+
 export default function Home() {
-  const { currentStep } = useWriterStore();
+  const { currentStep, appMode, activeView } = useWriterStore();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[#0b0c16] text-[#f3f4f6] flex flex-col font-sans justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-violet-500"></div>
+      </div>
+    );
+  }
 
   const renderStep = () => {
+    // If in Autopilot mode and not yet at the Content Editor (step 13)
+    if (appMode === 'autopilot' && currentStep < 13) {
+      return <AutopilotWriter />;
+    }
+
     switch (currentStep) {
       case 0:
         return <Step0Research />;
@@ -58,5 +79,13 @@ export default function Home() {
     }
   };
 
-  return <WizardLayout>{renderStep()}</WizardLayout>;
+  const renderContent = () => {
+    if (activeView === 'dashboard') {
+      return <SavedArticles />;
+    }
+    return renderStep();
+  };
+
+  return <WizardLayout>{renderContent()}</WizardLayout>;
 }
+

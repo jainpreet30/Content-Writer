@@ -24,7 +24,8 @@ import {
   FileText,
   RotateCcw,
   BookOpen,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Save
 } from 'lucide-react';
 import debounce from 'lodash/debounce';
 import canvasConfetti from 'canvas-confetti';
@@ -54,6 +55,8 @@ export default function Step13Editor() {
     setStep,
     seoRules,
     totalWordTarget,
+    competitorContent,
+    saveCurrentArticle,
   } = useWriterStore();
 
   const [generating, setGenerating] = useState(false);
@@ -84,9 +87,19 @@ export default function Step13Editor() {
     images: 0,
   });
 
+  const getInitialContent = () => {
+    if (outline && outline.length > 0) {
+      return outline.map((h, i) => {
+        const tag = h.type.toLowerCase();
+        return `<${tag}>${h.text}</${tag}>\n<p>Exploring details about ${h.text} to establish a comprehensive overview of ${mainKeyword || 'the topic'}.</p>`;
+      }).join('\n');
+    }
+    return `<h2>Overview of ${mainKeyword || 'SEO Content'}</h2>\n<p>Start writing your highly optimized content for the target keyword "${mainKeyword || 'SEO'}" here...</p>`;
+  };
+
   const editor = useEditor({
     extensions: [StarterKit, Image],
-    content: editorContent || `<h2>Featured SEO Tools 2026</h2><p>Welcome to this guide on the best SEO tools for small businesses. Search Engine Optimization (SEO) helps small businesses drive organic traffic and improve online presence without spending thousands on ads. SEO tools automate keyword research, backlink analysis, site audits, and rank tracking so small business owners can compete with larger companies. These tools include features like competitor analysis, performance tracking, and reporting. The best SEO tools for small businesses combine affordability with powerful features like content analysis, technical SEO checks, and domain authority tracking.</p><h2>Our Top Picks</h2><h3>Ubersuggest</h3><p>Ubersuggest generates individual reports faster than most competitors. It outperforms Google Keyword Planner for generating keyword ideas and provides simplified metrics that small business owners can understand immediately.</p><p>Key features:</p><ul><li>Rapid keyword research with abundant ideas</li><li>Simplified metrics for quick decisions</li><li>Site audit capabilities</li><li>Backlink analysis</li></ul>`,
+    content: editorContent || getInitialContent(),
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       setEditorContent(html);
@@ -284,13 +297,16 @@ export default function Step13Editor() {
           entities: activeEntities,
           ngrams: activeNGrams,
           apiKeys,
-          provider: activeProvider
+          provider: activeProvider,
+          competitorContent
         })
       });
       const data = await res.json();
       if (data.content) {
         editor.commands.setContent(data.content);
+        setEditorContent(data.content);
         calculateScore(data.content);
+        saveCurrentArticle();
       }
     } catch (e) {
       console.error(e);
@@ -359,13 +375,16 @@ export default function Step13Editor() {
           keyword: mainKeyword,
           entities: activeEntities,
           ngrams: activeNGrams,
-          provider: activeProvider
+          provider: activeProvider,
+          competitorContent
         }),
       });
       const data = await res.json();
       if (data.content && editor) {
         editor.commands.setContent(data.content);
+        setEditorContent(data.content);
         calculateScore(data.content);
+        saveCurrentArticle();
       }
     } catch (e) {
       console.error(e);
@@ -378,7 +397,7 @@ export default function Step13Editor() {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 h-full items-stretch">
+    <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
       {/* Left Column: Rich Text Canvas (70%) */}
       <div className="flex-1 flex flex-col bg-[#141829] border border-[#232948] rounded-2xl overflow-hidden shadow-xl">
         {/* Editor Toolbar */}
@@ -460,6 +479,17 @@ export default function Step13Editor() {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => {
+                saveCurrentArticle();
+                alert('Draft saved successfully to My Articles!');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-950/30 hover:bg-emerald-900/30 border border-emerald-900/50 text-xs font-bold text-emerald-400 transition"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Save Draft</span>
+            </button>
+
+            <button
               onClick={() => setShowPromptModal(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1b1f3c] hover:bg-[#252c58] text-xs font-bold text-gray-300 transition"
             >
@@ -487,7 +517,7 @@ export default function Step13Editor() {
         </div>
 
         {/* Text Area Canvas */}
-        <div className="flex-1 p-6 overflow-y-auto min-h-[500px]">
+        <div className="w-full p-6 min-h-[300px]">
           <EditorContent editor={editor} className="outline-none" />
         </div>
 
@@ -508,7 +538,7 @@ export default function Step13Editor() {
       </div>
 
       {/* Right Column: SEO Optimization Sidebar (30%) */}
-      <div className="w-full xl:w-[350px] space-y-6 shrink-0 flex flex-col justify-start">
+      <div className="w-full lg:w-[350px] space-y-6 shrink-0 flex flex-col justify-start">
         {/* Score Card */}
         <div className="bg-[#141829] border border-[#232948] rounded-2xl p-6 shadow-xl text-center space-y-4">
           <span className="text-xs font-black text-gray-400 uppercase tracking-widest block">Content Score</span>

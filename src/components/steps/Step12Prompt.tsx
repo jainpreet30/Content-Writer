@@ -116,7 +116,17 @@ ${allExcluded.map((x) => `- ${x}`).join('\n')}
       prompt += `- Custom Request: ${customInstructions.trim()}\n`;
     }
 
-    prompt += `\nGenerate the full article following this structure explicitly.`;
+    prompt += `\nFORMATTING & STRUCTURE RULES:
+- Use rich HTML formatting. Bold key terms using <strong>.
+- Structure sections based on keyword category rules:
+  1. If the keyword implies a comparison or contains 'vs', 'compare', 'comparison', 'difference', 'alternative', generate comparative HTML tables (<table>) to contrast parameters (specs, features, rating, cost).
+  2. If the keyword implies a list, ranking, or review (contains 'best', 'top', 'reviews', 'featured', 'choice', 'software', 'app', 'tool'), structure specifications using <ul>, and provide clear Pro and Con bullet points for each item/product mentioned. (Do NOT use emojis like 👍 or 👎; prefix with standard text like 'Pro:' or 'Con:').
+  3. If the keyword implies a guide, tutorial, or setup (contains 'how to', 'guide', 'tutorial', 'step', 'setup', 'configure', 'process', 'workflow'), use numbered step-by-step lists (<ol>) to outline procedures.
+  4. If the keyword implies services, agency, or company (contains 'company', 'agency', 'service', 'firm', 'provider'), include service checklists, package comparison tables, and a short Frequently Asked Questions (FAQ) section at the end with bolded questions and clear answers.
+- CRITICAL: Whenever introducing features, items, options, steps, or pros & cons, you MUST use bullet points (<ul> with <li> tags) or numbered lists (<ol> with <li> tags) rather than long paragraph blocks.
+- Avoid walls of text. Keep paragraphs (<p>) brief (maximum 2-3 sentences) to ensure the content is highly scannable and readable.
+- Output ONLY clean valid HTML. Do not wrap in markdown \`\`\`html blocks or include conversational intro/outro text.
+`;
 
     setMasterPrompt(prompt);
   };

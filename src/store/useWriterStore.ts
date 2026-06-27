@@ -30,6 +30,19 @@ export interface AlphabeticSuggestion {
   checked: boolean;
 }
 
+export interface SavedArticle {
+  id: string;
+  keyword: string;
+  title: string;
+  content: string;
+  outline: HeadingItem[];
+  score: number;
+  wordCount: number;
+  status: 'in-progress' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SeoRule {
   id: string;
   label: string;
@@ -184,6 +197,8 @@ export const defaultSeoRules: SeoRule[] = [
 export interface WriterState {
   // Wizard Progress
   currentStep: number;
+  appMode: 'wizard' | 'autopilot';
+  activeView: 'writer' | 'dashboard';
   
   // Project Config
   projectId: string;
@@ -245,7 +260,12 @@ export interface WriterState {
   editorContent: string;
   currentScore: number;
   
+  // Saved Articles
+  savedArticles: SavedArticle[];
+  
   // Actions
+  setActiveView: (view: 'writer' | 'dashboard') => void;
+  setAppMode: (mode: 'wizard' | 'autopilot') => void;
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -301,10 +321,19 @@ export interface WriterState {
   // Editor
   setEditorContent: (content: string) => void;
   setCurrentScore: (score: number) => void;
+  
+  // Saved Articles
+  saveCurrentArticle: () => void;
+  loadArticle: (id: string) => void;
+  deleteArticle: (id: string) => void;
+  toggleArticleStatus: (id: string) => void;
+  
   resetAll: () => void;
 }
 
 const initialStates = {
+  appMode: 'wizard' as const,
+  activeView: 'writer' as const,
   currentStep: 0,
   projectId: 'proj_' + Math.random().toString(36).substr(2, 9),
   mainKeyword: '',
@@ -347,6 +376,7 @@ const initialStates = {
   masterPrompt: '',
   editorContent: '',
   currentScore: 0,
+  savedArticles: [],
 };
 
 export const useWriterStore = create<WriterState>()(
@@ -354,9 +384,11 @@ export const useWriterStore = create<WriterState>()(
     (set) => ({
       ...initialStates,
 
+      setActiveView: (view) => set({ activeView: view }),
+      setAppMode: (mode) => set({ appMode: mode }),
       setStep: (step) => set({ currentStep: step }),
       nextStep: () => set((state) => ({ currentStep: Math.min(state.currentStep + 1, 13) })),
-      prevStep: () => set((state) => ({ currentStep: Math.max(state.currentStep - 0, state.currentStep - 1) })),
+      prevStep: () => set((state) => ({ currentStep: Math.max(0, state.currentStep - 1) })),
       
       setMainKeyword: (keyword) => set({ mainKeyword: keyword }),
       setApiKeys: (keys) => set((state) => ({ apiKeys: { ...state.apiKeys, ...keys } })),
@@ -453,12 +485,91 @@ export const useWriterStore = create<WriterState>()(
       setEditorContent: (content) => set({ editorContent: content }),
       setCurrentScore: (score) => set({ currentScore: score }),
       
-      resetAll: () => set(initialStates),
+      // Saved Articles Actions
+      saveCurrentArticle: () => set((state) => {
+        const content = state.editorContent;
+        if (!content || content.trim().length < 20) return state;
+        
+        // Extract title from first H1 or H2
+        const titleMatch = content.match(/<h[12][^>]*>(.*?)<\/h[12]>/i);
+        const title = titleMatch
+          ? titleMatch[1].replace(/<[^>]+>/g, '').trim()
+          : state.mainKeyword || 'Untitled Article';
+        
+        // Calculate word count
+        const textOnly = content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        const wordCount = textOnly.split(/\s+/).filter(Boolean).length;
+        
+        const now = new Date().toISOString();
+        const existingIndex = state.savedArticles.findIndex(a => a.id === state.projectId);
+        
+        if (existingIndex >= 0) {
+          // Update existing
+          const updated = [...state.savedArticles];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            keyword: state.mainKeyword,
+            title,
+            content,
+            outline: state.outline,
+            score: state.currentScore,
+            wordCount,
+            updatedAt: now,
+          };
+          return { savedArticles: updated };
+        } else {
+          // Create new
+          const newArticle: SavedArticle = {
+            id: state.projectId,
+            keyword: state.mainKeyword,
+            title,
+            content,
+            outline: state.outline,
+            score: state.currentScore,
+            wordCount,
+            status: 'in-progress',
+            createdAt: now,
+            updatedAt: now,
+          };
+          return { savedArticles: [newArticle, ...state.savedArticles] };
+        }
+      }),
+      
+      loadArticle: (id) => set((state) => {
+        const article = state.savedArticles.find(a => a.id === id);
+        if (!article) return state;
+        return {
+          projectId: article.id,
+          mainKeyword: article.keyword,
+          outline: article.outline,
+          editorContent: article.content,
+          currentScore: article.score,
+          currentStep: 13,
+          activeView: 'writer',
+        };
+      }),
+      
+      deleteArticle: (id) => set((state) => ({
+        savedArticles: state.savedArticles.filter(a => a.id !== id),
+      })),
+      
+      toggleArticleStatus: (id) => set((state) => ({
+        savedArticles: state.savedArticles.map(a =>
+          a.id === id
+            ? { ...a, status: a.status === 'completed' ? 'in-progress' : 'completed', updatedAt: new Date().toISOString() }
+            : a
+        ),
+      })),
+      
+      resetAll: () => set((state) => ({ ...initialStates, savedArticles: state.savedArticles, projectId: 'proj_' + Math.random().toString(36).substr(2, 9) })),
     }),
     {
       name: 'seo-writer-store',
       partialize: (state) => ({
+        appMode: state.appMode,
+        activeView: state.activeView,
         currentStep: state.currentStep,
+        savedArticles: state.savedArticles,
         projectId: state.projectId,
         mainKeyword: state.mainKeyword,
         apiKeys: state.apiKeys,

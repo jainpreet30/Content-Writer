@@ -55,9 +55,7 @@ export default function Step0Research() {
     []
   );
 
-  useEffect(() => {
-    fetchSuggestions(searchKeyword);
-  }, [searchKeyword, fetchSuggestions]);
+
 
   const handleAddCompetitor = () => {
     if (urlInput.trim()) {
@@ -91,35 +89,8 @@ export default function Step0Research() {
           setSerpResults([]);
         }
       } else {
-        // If user has a Serper.dev API key, we could query real SERPs, 
-        // but otherwise, we fall back to a high-fidelity local Google search simulator
-        // that returns actual search results for the given term.
-        const mockPages = [
-          {
-            title: `Top 10 SEO Tools for Small Businesses in 2026 - Moz`,
-            url: `https://moz.com/blog/best-seo-tools-small-business`,
-            snippet: `Discover the most effective, easy-to-use, and budget-friendly SEO search tools. We compare Ahrefs, Semrush, Moz, and Ubersuggest for small businesses.`
-          },
-          {
-            title: `Simple and Easy SEO Tools for Beginners - Morningscore`,
-            url: `https://morningscore.io/simple-and-easy-seo-tools-for-beginners/`,
-            snippet: `Looking for beginner-friendly SEO software? Here is a breakdown of simple tools to start tracking rankings, backlinks, and website performance.`
-          },
-          {
-            title: `Best Free SEO Software in 2025 - HubSpot Blog`,
-            url: `https://blog.hubspot.com/marketing/free-seo-software`,
-            snippet: `Optimize your site for organic traffic with these free SEO tools. Includes options for rank tracking, keyword suggestions, and link audits.`
-          },
-          {
-            title: `Why Ubersuggest is the Best Budget SEO Tool - Neil Patel`,
-            url: `https://neilpatel.com/blog/ubersuggest-seo-tool`,
-            snippet: `Read our comprehensive guide comparing Ubersuggest vs competitors. Learn how to do keyword analysis and competitor tracking on a budget.`
-          }
-        ];
-
-        // Simulate network request
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        setSerpResults(mockPages);
+        setSerpError('Serper.dev API Key not found. Please add your Serper.dev API key under the "API Keys" settings in the top-right header.');
+        setSerpResults([]);
       }
     } catch (e: any) {
       console.error(e);
@@ -227,7 +198,16 @@ export default function Step0Research() {
                 <input
                   type="text"
                   value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSearchKeyword(val);
+                    fetchSuggestions(val);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSuggestions([]);
+                    }
+                  }}
                   placeholder="e.g. best seo tools"
                   className="w-full px-3 py-2 bg-[#191d35] border border-[#2a315c] rounded-xl outline-none text-sm text-white focus:border-violet-500"
                 />
